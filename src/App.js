@@ -53,8 +53,6 @@ const trackConversion = (conversionType, value = 0) => {
 function App() {
   const [currentStep, setCurrentStep] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
-  const [showEmailCapture, setShowEmailCapture] = useState(false);
-  const [emailCaptured, setEmailCaptured] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
   const [startTime] = useState(Date.now());
   const [formData, setFormData] = useState({
@@ -71,7 +69,6 @@ function App() {
     referralCode: '' // Add referral tracking
   });
   const [formErrors, setFormErrors] = useState({});
-  const [emailOnlyCapture, setEmailOnlyCapture] = useState('');
   const [referralInfo, setReferralInfo] = useState(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
@@ -263,57 +260,58 @@ function App() {
       
       setIsLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setIsLoading(false);
-      
-      // Track successful conversion
-      trackConversion('application_completed', 500); // $500 estimated value
-      trackEvent('application_success', {
-        session_id: sessionId,
-        user_email: formData.email,
-        user_state: formData.state,
-        user_city: formData.city,
-        referral_source: formData.referralSource,
-        total_time: Date.now() - startTime
-      });
-      
-      setCurrentStep('confirmation');
-      trackPageView('Thank You Page');
+      try {
+        // Submit to backend API
+        const response = await fetch('http://localhost:5000/api/leads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            sessionId: sessionId,
+            utmSource: new URLSearchParams(window.location.search).get('utm_source'),
+            utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign'),
+            utmMedium: new URLSearchParams(window.location.search).get('utm_medium')
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to submit application');
+        }
+        
+        // Track successful conversion
+        trackConversion('application_completed', 500);
+        trackEvent('application_success', {
+          session_id: sessionId,
+          user_email: formData.email,
+          user_state: formData.state,
+          user_city: formData.city,
+          referral_source: formData.referralSource,
+          total_time: Date.now() - startTime,
+          lead_id: result.leadId
+        });
+        
+        setCurrentStep('confirmation');
+        trackPageView('Thank You Page');
+        
+      } catch (error) {
+        console.error('Application submission error:', error);
+        alert('Failed to submit application. Please try again or contact support.');
+        
+        // Track submission error
+        trackEvent('application_error', {
+          session_id: sessionId,
+          error_message: error.message
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleEmailCapture = async () => {
-    if (!validateEmail(emailOnlyCapture)) {
-      return;
-    }
-    
-    // Track email capture attempt
-    trackEvent('email_capture_attempt', {
-      email: emailOnlyCapture,
-      capture_type: 'popup',
-      session_id: sessionId
-    });
-    
-    setIsLoading(true);
-    // Simulate email capture
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    setEmailCaptured(true);
-    
-    // Track successful email capture
-    trackConversion('email_captured', 50); // $50 estimated value
-    trackEvent('email_capture_success', {
-      email: emailOnlyCapture,
-      session_id: sessionId
-    });
-    
-    setTimeout(() => {
-      setShowEmailCapture(false);
-      setEmailCaptured(false);
-    }, 3000);
-  };
 
   const canProceedToApplication = () => {
     return formData.hasResidence === 'yes' && 
@@ -332,181 +330,56 @@ function App() {
            canProceedToApplication();
   };
 
-  // Email capture popup
-  const EmailCapturePopup = () => {
-    if (!showEmailCapture) return null;
 
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in duration-300">
-          <button
-            onClick={() => setShowEmailCapture(false)}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          
-          {!emailCaptured ? (
-            <>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Wait! Don't Miss Out</h3>
-                <p className="text-gray-600">Get our free guide: "5 Ways to Maximize Your Passive Income" sent to your inbox!</p>
-              </div>
-              
-              <div className="space-y-4">
-                <input
-                  type="email"
-                  value={emailOnlyCapture}
-                  onChange={(e) => setEmailOnlyCapture(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={handleEmailCapture}
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send Me The Free Guide'
-                  )}
-                </button>
-                <p className="text-xs text-gray-500 text-center">No spam. Unsubscribe anytime.</p>
-              </div>
-            </>
-          ) : (
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h3>
-              <p className="text-gray-600">Check your email for the free passive income guide!</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Trigger email capture on scroll or time
-  React.useEffect(() => {
-    let scrollTriggered = false;
-    let timeTriggered = false;
-
-    const handleScroll = () => {
-      if (!scrollTriggered && window.scrollY > window.innerHeight * 0.7) {
-        scrollTriggered = true;
-        
-        // Track scroll depth
-        trackEvent('scroll_depth', {
-          depth_percentage: 70,
-          session_id: sessionId,
-          trigger_type: 'scroll'
-        });
-        
-        setTimeout(() => {
-          setShowEmailCapture(true);
-          trackEvent('email_popup_shown', {
-            trigger: 'scroll',
-            scroll_depth: 70,
-            session_id: sessionId
-          });
-        }, 1000);
-      }
-    };
-
-    const timeoutId = setTimeout(() => {
-      if (!timeTriggered && !scrollTriggered) {
-        timeTriggered = true;
-        setShowEmailCapture(true);
-        trackEvent('email_popup_shown', {
-          trigger: 'time',
-          time_on_page: 30000,
-          session_id: sessionId
-        });
-      }
-    }, 30000); // Show after 30 seconds
-
-    // Track engagement time
-    const engagementInterval = setInterval(() => {
-      trackEvent('engagement_time', {
-        time_on_page: Date.now() - startTime,
-        session_id: sessionId,
-        current_step: currentStep
-      });
-    }, 30000); // Every 30 seconds
-
-    window.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeoutId);
-      clearInterval(engagementInterval);
-    };
-  }, [sessionId, startTime, currentStep]);
 
   // Admin Dashboard Component
   const AdminDashboard = () => {
-    const [applications, setApplications] = useState([
-      {
-        id: 1,
-        name: 'Sarah Johnson',
-        email: 'sarah@email.com',
-        phone: '(555) 123-4567',
-        state: 'Texas',
-        city: 'Austin',
-        status: 'approved',
-        submitted: '2024-01-15',
-        referralCode: 'SARAH123',
-        monthlyEarnings: 750
-      },
-      {
-        id: 2,
-        name: 'Mike Rodriguez',
-        email: 'mike@email.com',
-        phone: '(555) 987-6543',
-        state: 'Florida',
-        city: 'Miami',
-        status: 'pending',
-        submitted: '2024-01-20',
-        referralCode: null,
-        monthlyEarnings: 0
-      },
-      {
-        id: 3,
-        name: 'Jennifer Lee',
-        email: 'jen@email.com',
-        phone: '(555) 456-7890',
-        state: 'California',
-        city: 'Los Angeles',
-        status: 'approved',
-        submitted: '2024-01-18',
-        referralCode: 'FRIEND567',
-        monthlyEarnings: 600
-      }
-    ]);
-
+    const [applications, setApplications] = useState([]);
     const [stats, setStats] = useState({
-      totalApplications: 523,
-      approvedApplications: 387,
-      pendingApplications: 89,
-      rejectedApplications: 47,
-      totalReferrals: 156,
-      avgMonthlyPayout: 675,
-      topStates: [
-        { state: 'California', count: 45 },
-        { state: 'Texas', count: 38 },
-        { state: 'Florida', count: 32 },
-        { state: 'New York', count: 28 }
-      ]
+      totalApplications: 0,
+      statusBreakdown: {},
+      qualifiedCount: 0,
+      notQualifiedCount: 0,
+      totalReferrals: 0,
+      topStates: [],
+      referralSources: [],
+      avgMonthlyPayout: 0,
+      recentApplications: []
     });
+    const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+
+    // Fetch data when dashboard opens
+    useEffect(() => {
+      if (showAdminDashboard) {
+        fetchDashboardData();
+      }
+    }, [showAdminDashboard]);
+
+    const fetchDashboardData = async () => {
+      setIsLoadingDashboard(true);
+      try {
+        // Fetch applications and stats in parallel
+        const [applicationsResponse, statsResponse] = await Promise.all([
+          fetch('http://localhost:5000/api/leads?limit=20'),
+          fetch('http://localhost:5000/api/leads/stats')
+        ]);
+
+        if (applicationsResponse.ok) {
+          const applicationsData = await applicationsResponse.json();
+          setApplications(applicationsData.leads || []);
+        }
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // Keep default empty state
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+    };
 
     if (!showAdminDashboard) return null;
 
@@ -516,50 +389,76 @@ function App() {
           <div className="bg-white rounded-3xl shadow-2xl max-w-7xl mx-auto p-8">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900">EdgeVantage Admin Dashboard</h2>
-              <button
-                onClick={() => setShowAdminDashboard(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-8 h-8" />
-              </button>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={fetchDashboardData}
+                  disabled={isLoadingDashboard}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {isLoadingDashboard ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                  )}
+                  Refresh Data
+                </button>
+                <button
+                  onClick={() => setShowAdminDashboard(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-8 h-8" />
+                </button>
+              </div>
             </div>
+
+            {/* Loading State */}
+            {isLoadingDashboard && (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-gray-600">Loading dashboard data...</p>
+              </div>
+            )}
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-blue-50 rounded-2xl p-6">
-                <h3 className="text-sm font-medium text-blue-600 mb-2">Total Applications</h3>
-                <p className="text-3xl font-bold text-blue-900">{stats.totalApplications}</p>
-                <p className="text-sm text-blue-600 mt-1">+12% this month</p>
+            {!isLoadingDashboard && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-blue-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-blue-600 mb-2">Total Applications</h3>
+                  <p className="text-3xl font-bold text-blue-900">{stats.totalApplications}</p>
+                  <p className="text-sm text-blue-600 mt-1">All submissions</p>
+                </div>
+                <div className="bg-green-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-green-600 mb-2">Qualified</h3>
+                  <p className="text-3xl font-bold text-green-900">{stats.qualifiedCount}</p>
+                  <p className="text-sm text-green-600 mt-1">{stats.totalApplications ? Math.round((stats.qualifiedCount / stats.totalApplications) * 100) : 0}% qualification rate</p>
+                </div>
+                <div className="bg-yellow-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-yellow-600 mb-2">Avg Monthly Payout</h3>
+                  <p className="text-3xl font-bold text-yellow-900">${Math.round(stats.avgMonthlyPayout || 0)}</p>
+                  <p className="text-sm text-yellow-600 mt-1">Per member</p>
+                </div>
+                <div className="bg-purple-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-purple-600 mb-2">Referrals</h3>
+                  <p className="text-3xl font-bold text-purple-900">{stats.totalReferrals}</p>
+                  <p className="text-sm text-purple-600 mt-1">{stats.totalApplications ? Math.round((stats.totalReferrals / stats.totalApplications) * 100) : 0}% of applications</p>
+                </div>
               </div>
-              <div className="bg-green-50 rounded-2xl p-6">
-                <h3 className="text-sm font-medium text-green-600 mb-2">Approved</h3>
-                <p className="text-3xl font-bold text-green-900">{stats.approvedApplications}</p>
-                <p className="text-sm text-green-600 mt-1">74% approval rate</p>
-              </div>
-              <div className="bg-yellow-50 rounded-2xl p-6">
-                <h3 className="text-sm font-medium text-yellow-600 mb-2">Avg Monthly Payout</h3>
-                <p className="text-3xl font-bold text-yellow-900">${stats.avgMonthlyPayout}</p>
-                <p className="text-sm text-yellow-600 mt-1">Per member</p>
-              </div>
-              <div className="bg-purple-50 rounded-2xl p-6">
-                <h3 className="text-sm font-medium text-purple-600 mb-2">Referrals</h3>
-                <p className="text-3xl font-bold text-purple-900">{stats.totalReferrals}</p>
-                <p className="text-sm text-purple-600 mt-1">30% of applications</p>
-              </div>
-            </div>
+            )}
 
             {/* Top States */}
-            <div className="bg-gray-50 rounded-2xl p-6 mb-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Top States by Applications</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {stats.topStates.map((item, index) => (
-                  <div key={index} className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{item.count}</p>
-                    <p className="text-sm text-gray-600">{item.state}</p>
-                  </div>
-                ))}
+            {!isLoadingDashboard && stats.topStates.length > 0 && (
+              <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Top States by Applications</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {stats.topStates.slice(0, 4).map((item, index) => (
+                    <div key={index} className="text-center">
+                      <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+                      <p className="text-sm text-gray-600">{item._id}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Recent Applications */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -579,37 +478,49 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {applications.map((app) => (
-                      <tr key={app.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{app.name}</div>
-                            <div className="text-sm text-gray-500">{app.email}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {app.city}, {app.state}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            app.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {app.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {app.referralCode || 'Direct'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${app.monthlyEarnings}/mo
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {app.submitted}
+                    {applications.length === 0 && !isLoadingDashboard ? (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          No applications found
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      applications.map((app) => (
+                        <tr key={app._id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{app.name}</div>
+                              <div className="text-sm text-gray-500">{app.email}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {app.city}, {app.state}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              app.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              app.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {app.status}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {app.qualified ? 'Qualified' : 'Not Qualified'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {app.referralCode || 'Direct'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${app.monthlyEarnings || 0}/mo
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(app.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -666,7 +577,6 @@ function App() {
   if (currentStep === 'overview') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        <EmailCapturePopup />
         <AdminDashboard />
         <ReferralBanner />
         
