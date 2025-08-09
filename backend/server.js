@@ -155,6 +155,177 @@ leadSchema.index({ referralCode: 1 });
 
 const Lead = mongoose.model('Lead', leadSchema);
 
+// Affiliate Schema
+const affiliateSchema = new mongoose.Schema({
+  // Basic Info
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Affiliate Details
+  affiliateCode: {
+    type: String,
+    required: true,
+    unique: true,
+    uppercase: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'active', 'suspended', 'banned'],
+    default: 'pending'
+  },
+  
+  // Performance Tracking
+  totalReferrals: {
+    type: Number,
+    default: 0
+  },
+  approvedReferrals: {
+    type: Number,
+    default: 0
+  },
+  totalCommissions: {
+    type: Number,
+    default: 0
+  },
+  paidCommissions: {
+    type: Number,
+    default: 0
+  },
+  pendingCommissions: {
+    type: Number,
+    default: 0
+  },
+  
+  // Settings
+  commissionRate: {
+    type: Number,
+    default: 50, // $50 per approved referral
+    min: 0
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['paypal', 'venmo', 'cashapp', 'zelle', 'check'],
+    default: 'paypal'
+  },
+  paymentDetails: {
+    type: String,
+    default: ''
+  },
+  
+  // Tracking
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastLoginAt: Date,
+  
+  // Marketing Materials
+  customMessage: {
+    type: String,
+    default: 'Join me on EdgeVantage and earn $500-$1000 monthly passive income!'
+  },
+  
+  // Admin Notes
+  notes: {
+    type: String,
+    default: ''
+  }
+});
+
+// Commission Transaction Schema
+const commissionSchema = new mongoose.Schema({
+  affiliateId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Affiliate',
+    required: true
+  },
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lead',
+    required: true
+  },
+  affiliateCode: {
+    type: String,
+    required: true
+  },
+  leadEmail: {
+    type: String,
+    required: true
+  },
+  leadName: {
+    type: String,
+    required: true
+  },
+  
+  // Commission Details
+  amount: {
+    type: Number,
+    required: true,
+    default: 50
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'paid', 'cancelled'],
+    default: 'pending'
+  },
+  
+  // Payment Info
+  paidAt: Date,
+  paymentMethod: String,
+  paymentReference: String,
+  
+  // Tracking
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  
+  // Admin Notes
+  notes: {
+    type: String,
+    default: ''
+  }
+});
+
+// Add indexes
+affiliateSchema.index({ email: 1 });
+affiliateSchema.index({ affiliateCode: 1 });
+affiliateSchema.index({ status: 1 });
+affiliateSchema.index({ createdAt: -1 });
+
+commissionSchema.index({ affiliateId: 1 });
+commissionSchema.index({ leadId: 1 });
+commissionSchema.index({ affiliateCode: 1 });
+commissionSchema.index({ status: 1 });
+commissionSchema.index({ createdAt: -1 });
+
+const Affiliate = mongoose.model('Affiliate', affiliateSchema);
+const Commission = mongoose.model('Commission', commissionSchema);
+
 // Routes
 
 // Submit new application
@@ -236,8 +407,9 @@ app.get('/api/leads', async (req, res) => {
 });
 
 // Get lead statistics (for admin dashboard)
-app.get('/api/leads/stats', async (req, res) => {
+app.get('/api/leads-stats', async (req, res) => {
   try {
+    console.log('📊 Fetching lead statistics...');
     const stats = await Lead.aggregate([
       {
         $facet: {
@@ -284,6 +456,8 @@ app.get('/api/leads/stats', async (req, res) => {
     ]);
     
     // Format the stats
+    console.log('📊 Raw stats result:', JSON.stringify(stats[0], null, 2));
+    
     const formattedStats = {
       totalApplications: stats[0].totalApplications[0]?.count || 0,
       statusBreakdown: Object.fromEntries(
@@ -298,6 +472,7 @@ app.get('/api/leads/stats', async (req, res) => {
       recentApplications: stats[0].recentApplications
     };
     
+    console.log('📊 Formatted stats:', JSON.stringify(formattedStats, null, 2));
     res.json(formattedStats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -359,21 +534,320 @@ app.get('/api/referral/:code', async (req, res) => {
   try {
     const { code } = req.params;
     
-    // In a real app, you might have a separate Referrals collection
-    // For now, we'll check if any approved lead has generated this code
-    // You can implement your own referral logic here
+    // Look up affiliate by code
+    const affiliate = await Affiliate.findOne({ 
+      affiliateCode: code.toUpperCase(),
+      status: 'active'
+    });
     
-    const mockReferralData = {
-      code: code,
-      referrerName: 'John Smith', // You'd look this up in your database
-      bonus: 50,
-      isValid: true
-    };
-    
-    res.json(mockReferralData);
+    if (affiliate) {
+      res.json({
+        code: code,
+        referrerName: affiliate.name,
+        bonus: affiliate.commissionRate,
+        isValid: true,
+        affiliateId: affiliate._id
+      });
+    } else {
+      res.json({
+        code: code,
+        isValid: false,
+        message: 'Referral code not found or inactive'
+      });
+    }
   } catch (error) {
     console.error('Error checking referral:', error);
     res.status(500).json({ error: 'Failed to check referral code' });
+  }
+});
+
+// Affiliate registration
+app.post('/api/affiliates/register', async (req, res) => {
+  try {
+    const { name, email, phone, paymentMethod = 'paypal', paymentDetails = '' } = req.body;
+    
+    // Generate unique affiliate code
+    let affiliateCode;
+    let codeExists = true;
+    let attempts = 0;
+    
+    while (codeExists && attempts < 10) {
+      const namePart = name.split(' ').map(n => n.substring(0, 3).toUpperCase()).join('').substring(0, 6);
+      const numberPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      affiliateCode = namePart + numberPart;
+      
+      const existing = await Affiliate.findOne({ affiliateCode });
+      codeExists = !!existing;
+      attempts++;
+    }
+    
+    if (codeExists) {
+      return res.status(400).json({ error: 'Unable to generate unique affiliate code' });
+    }
+    
+    // Check for existing email
+    const existingAffiliate = await Affiliate.findOne({ email });
+    if (existingAffiliate) {
+      return res.status(400).json({ error: 'Email already registered as affiliate' });
+    }
+    
+    const newAffiliate = new Affiliate({
+      name,
+      email,
+      phone,
+      affiliateCode,
+      paymentMethod,
+      paymentDetails,
+      status: 'active' // Auto-approve for now
+    });
+    
+    const savedAffiliate = await newAffiliate.save();
+    
+    console.log(`✅ New affiliate registered: ${savedAffiliate.email} - Code: ${savedAffiliate.affiliateCode}`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Affiliate registration successful',
+      affiliate: {
+        id: savedAffiliate._id,
+        name: savedAffiliate.name,
+        email: savedAffiliate.email,
+        affiliateCode: savedAffiliate.affiliateCode,
+        commissionRate: savedAffiliate.commissionRate
+      }
+    });
+  } catch (error) {
+    console.error('Error registering affiliate:', error);
+    res.status(500).json({ error: 'Failed to register affiliate' });
+  }
+});
+
+// Get affiliate dashboard data
+app.get('/api/affiliates/:code/dashboard', async (req, res) => {
+  try {
+    const { code } = req.params;
+    
+    const affiliate = await Affiliate.findOne({ affiliateCode: code.toUpperCase() });
+    if (!affiliate) {
+      return res.status(404).json({ error: 'Affiliate not found' });
+    }
+    
+    // Get referral stats
+    const referralStats = await Lead.aggregate([
+      { $match: { referralCode: code.toUpperCase() } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Get recent referrals
+    const recentReferrals = await Lead.find({ referralCode: code.toUpperCase() })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('name email status qualified createdAt city state');
+    
+    // Get commissions
+    const commissions = await Commission.find({ affiliateCode: code.toUpperCase() })
+      .sort({ createdAt: -1 })
+      .limit(20);
+    
+    // Calculate totals
+    const totalReferrals = await Lead.countDocuments({ referralCode: code.toUpperCase() });
+    const approvedReferrals = await Lead.countDocuments({ 
+      referralCode: code.toUpperCase(), 
+      status: 'approved' 
+    });
+    const pendingReferrals = await Lead.countDocuments({ 
+      referralCode: code.toUpperCase(), 
+      status: { $in: ['pending', 'contacted'] }
+    });
+    
+    const totalCommissions = approvedReferrals * affiliate.commissionRate;
+    const paidCommissions = await Commission.aggregate([
+      { $match: { affiliateCode: code.toUpperCase(), status: 'paid' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    
+    const pendingCommissions = await Commission.aggregate([
+      { $match: { affiliateCode: code.toUpperCase(), status: { $in: ['pending', 'approved'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    
+    // Update affiliate stats
+    await Affiliate.findByIdAndUpdate(affiliate._id, {
+      totalReferrals,
+      approvedReferrals,
+      totalCommissions,
+      paidCommissions: paidCommissions[0]?.total || 0,
+      pendingCommissions: pendingCommissions[0]?.total || 0,
+      lastLoginAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    res.json({
+      affiliate: {
+        name: affiliate.name,
+        email: affiliate.email,
+        affiliateCode: affiliate.affiliateCode,
+        status: affiliate.status,
+        commissionRate: affiliate.commissionRate,
+        customMessage: affiliate.customMessage
+      },
+      stats: {
+        totalReferrals,
+        approvedReferrals,
+        pendingReferrals,
+        totalCommissions,
+        paidCommissions: paidCommissions[0]?.total || 0,
+        pendingCommissions: pendingCommissions[0]?.total || 0,
+        conversionRate: totalReferrals > 0 ? ((approvedReferrals / totalReferrals) * 100).toFixed(1) : '0'
+      },
+      recentReferrals,
+      commissions,
+      referralStats: referralStats.reduce((acc, stat) => {
+        acc[stat._id] = stat.count;
+        return acc;
+      }, {})
+    });
+  } catch (error) {
+    console.error('Error fetching affiliate dashboard:', error);
+    res.status(500).json({ error: 'Failed to fetch affiliate dashboard' });
+  }
+});
+
+// Get all affiliates (admin only)
+app.get('/api/affiliates', async (req, res) => {
+  try {
+    const { status, limit = 50 } = req.query;
+    
+    const query = {};
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    
+    const affiliates = await Affiliate.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .select('-notes');
+    
+    res.json({ affiliates });
+  } catch (error) {
+    console.error('Error fetching affiliates:', error);
+    res.status(500).json({ error: 'Failed to fetch affiliates' });
+  }
+});
+
+// Update affiliate
+app.patch('/api/affiliates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    updates.updatedAt = new Date();
+    
+    const affiliate = await Affiliate.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    );
+    
+    if (!affiliate) {
+      return res.status(404).json({ error: 'Affiliate not found' });
+    }
+    
+    res.json({ success: true, affiliate });
+  } catch (error) {
+    console.error('Error updating affiliate:', error);
+    res.status(500).json({ error: 'Failed to update affiliate' });
+  }
+});
+
+// Process commission (when lead gets approved)
+app.post('/api/commissions/process', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    
+    const lead = await Lead.findById(leadId);
+    if (!lead || !lead.referralCode) {
+      return res.status(400).json({ error: 'Lead not found or no referral code' });
+    }
+    
+    const affiliate = await Affiliate.findOne({ affiliateCode: lead.referralCode.toUpperCase() });
+    if (!affiliate) {
+      return res.status(400).json({ error: 'Affiliate not found' });
+    }
+    
+    // Check if commission already exists
+    const existingCommission = await Commission.findOne({ leadId: lead._id });
+    if (existingCommission) {
+      return res.status(400).json({ error: 'Commission already processed for this lead' });
+    }
+    
+    // Create commission record
+    const commission = new Commission({
+      affiliateId: affiliate._id,
+      leadId: lead._id,
+      affiliateCode: affiliate.affiliateCode,
+      leadEmail: lead.email,
+      leadName: lead.name,
+      amount: affiliate.commissionRate,
+      status: lead.status === 'approved' ? 'approved' : 'pending'
+    });
+    
+    await commission.save();
+    
+    console.log(`✅ Commission processed: ${commission.amount} for ${affiliate.affiliateCode}`);
+    
+    res.json({ success: true, commission });
+  } catch (error) {
+    console.error('Error processing commission:', error);
+    res.status(500).json({ error: 'Failed to process commission' });
+  }
+});
+
+// Get affiliate stats (admin)
+app.get('/api/affiliates-stats', async (req, res) => {
+  try {
+    const stats = await Affiliate.aggregate([
+      {
+        $facet: {
+          totalAffiliates: [{ $count: 'count' }],
+          statusCounts: [
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+            { $sort: { _id: 1 } }
+          ],
+          topPerformers: [
+            { $match: { approvedReferrals: { $gt: 0 } } },
+            { $sort: { approvedReferrals: -1 } },
+            { $limit: 5 },
+            { $project: { name: 1, affiliateCode: 1, approvedReferrals: 1, totalCommissions: 1 } }
+          ],
+          totalCommissions: [
+            { $group: { _id: null, total: { $sum: '$totalCommissions' } } }
+          ],
+          paidCommissions: [
+            { $group: { _id: null, total: { $sum: '$paidCommissions' } } }
+          ]
+        }
+      }
+    ]);
+    
+    res.json({
+      totalAffiliates: stats[0].totalAffiliates[0]?.count || 0,
+      statusBreakdown: stats[0].statusCounts.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      topPerformers: stats[0].topPerformers,
+      totalCommissions: stats[0].totalCommissions[0]?.total || 0,
+      paidCommissions: stats[0].paidCommissions[0]?.total || 0,
+      pendingCommissions: (stats[0].totalCommissions[0]?.total || 0) - (stats[0].paidCommissions[0]?.total || 0)
+    });
+  } catch (error) {
+    console.error('Error fetching affiliate stats:', error);
+    res.status(500).json({ error: 'Failed to fetch affiliate stats' });
   }
 });
 

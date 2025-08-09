@@ -5,7 +5,7 @@ import {
   XCircle, Clock, RefreshCw, ChevronDown, Search, Edit2,
   Trash2, Eye, BarChart3, PieChart, FileText, Settings,
   UserCheck, AlertCircle, Star, ArrowUpRight, ArrowDownRight,
-  Home, X, Loader2
+  Home, X, Loader2, Link2, Award, CreditCard, UserPlus, Copy
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -27,11 +27,23 @@ const AdminDashboard = () => {
     monthlyRevenue: 0,
     activeMembers: 0
   });
+  const [affiliates, setAffiliates] = useState([]);
+  const [affiliateStats, setAffiliateStats] = useState({
+    totalAffiliates: 0,
+    activeAffiliates: 0,
+    totalCommissions: 0,
+    monthlyCommissions: 0,
+    avgCommissionPerAffiliate: 0,
+    topPerformers: [],
+    recentSignups: []
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('30days');
   const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedAffiliate, setSelectedAffiliate] = useState(null);
+  const [affiliateSearchTerm, setAffiliateSearchTerm] = useState('');
 
   // API base URL
   const API_URL = process.env.NODE_ENV === 'production' 
@@ -40,10 +52,18 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    if (activeTab === 'affiliates') {
+      fetchAffiliateData();
+    }
     // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000);
+    const interval = setInterval(() => {
+      fetchDashboardData();
+      if (activeTab === 'affiliates') {
+        fetchAffiliateData();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, [dateRange, statusFilter]);
+  }, [dateRange, statusFilter, activeTab]);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -67,7 +87,7 @@ const AdminDashboard = () => {
         setStats({
           ...statsData,
           conversionRate,
-          weeklyGrowth: 12.5, // Calculate from historical data
+          weeklyGrowth: 12.5,
           monthlyRevenue: (statsData.statusBreakdown?.approved || 0) * (statsData.avgMonthlyPayout || 750),
           activeMembers: statsData.statusBreakdown?.approved || 0
         });
@@ -76,6 +96,27 @@ const AdminDashboard = () => {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAffiliateData = async () => {
+    try {
+      const [affiliatesResponse, affiliateStatsResponse] = await Promise.all([
+        fetch(`${API_URL}/affiliates`),
+        fetch(`${API_URL}/affiliates-stats`)
+      ]);
+
+      if (affiliatesResponse.ok) {
+        const affiliatesData = await affiliatesResponse.json();
+        setAffiliates(affiliatesData.affiliates || []);
+      }
+
+      if (affiliateStatsResponse.ok) {
+        const statsData = await affiliateStatsResponse.json();
+        setAffiliateStats(statsData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch affiliate data:', error);
     }
   };
 
@@ -96,6 +137,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const updateAffiliateStatus = async (affiliateId, updates) => {
+    try {
+      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (response.ok) {
+        fetchAffiliateData();
+        setSelectedAffiliate(null);
+      }
+    } catch (error) {
+      console.error('Failed to update affiliate:', error);
+    }
+  };
+
   const deleteLead = async (leadId) => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     
@@ -112,6 +170,22 @@ const AdminDashboard = () => {
     }
   };
 
+  const deleteAffiliate = async (affiliateId) => {
+    if (!window.confirm('Are you sure you want to delete this affiliate?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        fetchAffiliateData();
+      }
+    } catch (error) {
+      console.error('Failed to delete affiliate:', error);
+    }
+  };
+
   const exportToCSV = () => {
     const csvContent = convertToCSV(leads);
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -119,6 +193,16 @@ const AdminDashboard = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `edgevantage-leads-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const exportAffiliateCSV = () => {
+    const csvContent = convertToCSV(affiliates);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `edgevantage-affiliates-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -135,12 +219,25 @@ const AdminDashboard = () => {
     return [headers, ...rows].join('\n');
   };
 
+  const copyReferralLink = (affiliateCode) => {
+    const referralUrl = `https://edgevantagepro.com/?ref=${affiliateCode}`;
+    navigator.clipboard.writeText(referralUrl);
+    alert('Referral link copied to clipboard!');
+  };
+
   const filteredLeads = leads.filter(lead => 
     (searchTerm === '' || 
      lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
      lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
      lead.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
      lead.state?.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const filteredAffiliates = affiliates.filter(affiliate => 
+    (affiliateSearchTerm === '' || 
+     affiliate.name?.toLowerCase().includes(affiliateSearchTerm.toLowerCase()) ||
+     affiliate.email?.toLowerCase().includes(affiliateSearchTerm.toLowerCase()) ||
+     affiliate.affiliateCode?.toLowerCase().includes(affiliateSearchTerm.toLowerCase()))
   );
 
   const MetricCard = ({ title, value, change, icon: Icon, color, prefix = '' }) => (
@@ -272,6 +369,130 @@ const AdminDashboard = () => {
     );
   };
 
+  const AffiliateDetailsModal = () => {
+    if (!selectedAffiliate) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-60 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Affiliate Details</h3>
+              <button onClick={() => setSelectedAffiliate(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Name</label>
+                <p className="text-lg font-semibold">{selectedAffiliate.name}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Status</label>
+                <select 
+                  value={selectedAffiliate.status}
+                  onChange={(e) => {
+                    const updated = { ...selectedAffiliate, status: e.target.value };
+                    setSelectedAffiliate(updated);
+                  }}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Email</label>
+                <p className="text-lg">{selectedAffiliate.email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Affiliate Code</label>
+                <div className="flex items-center space-x-2">
+                  <p className="text-lg font-mono bg-gray-100 px-2 py-1 rounded">{selectedAffiliate.affiliateCode}</p>
+                  <button
+                    onClick={() => copyReferralLink(selectedAffiliate.affiliateCode)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Total Referrals</label>
+                <p className="text-lg">{selectedAffiliate.totalReferrals}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Total Commissions</label>
+                <p className="text-lg">${selectedAffiliate.totalCommissions?.toFixed(2) || '0.00'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Commission Rate</label>
+                <input 
+                  type="number"
+                  value={selectedAffiliate.commissionRate || 50}
+                  onChange={(e) => {
+                    const updated = { ...selectedAffiliate, commissionRate: e.target.value };
+                    setSelectedAffiliate(updated);
+                  }}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Payment Method</label>
+                <select
+                  value={selectedAffiliate.paymentMethod || 'paypal'}
+                  onChange={(e) => {
+                    const updated = { ...selectedAffiliate, paymentMethod: e.target.value };
+                    setSelectedAffiliate(updated);
+                  }}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="paypal">PayPal</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="check">Check</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-600">Notes</label>
+                <textarea 
+                  value={selectedAffiliate.notes || ''}
+                  onChange={(e) => {
+                    const updated = { ...selectedAffiliate, notes: e.target.value };
+                    setSelectedAffiliate(updated);
+                  }}
+                  rows="3"
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => deleteAffiliate(selectedAffiliate._id)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Affiliate
+              </button>
+              <button
+                onClick={() => {
+                  const { _id, status, commissionRate, paymentMethod, notes } = selectedAffiliate;
+                  updateAffiliateStatus(_id, { status, commissionRate, paymentMethod, notes });
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -301,7 +522,7 @@ const AdminDashboard = () => {
               Refresh
             </button>
             <button
-              onClick={exportToCSV}
+              onClick={activeTab === 'affiliates' ? exportAffiliateCSV : exportToCSV}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -312,7 +533,7 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <div className="flex space-x-6 mt-4">
-          {['overview', 'leads', 'analytics', 'settings'].map((tab) => (
+          {['overview', 'leads', 'affiliates', 'analytics', 'settings'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -598,6 +819,168 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'affiliates' && (
+          <div className="space-y-6">
+            {/* Affiliate Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <MetricCard
+                title="Total Affiliates"
+                value={affiliateStats.totalAffiliates}
+                change={8.3}
+                icon={Users}
+                color="bg-blue-600"
+              />
+              <MetricCard
+                title="Active Affiliates"
+                value={affiliateStats.activeAffiliates}
+                change={5.7}
+                icon={UserCheck}
+                color="bg-green-600"
+              />
+              <MetricCard
+                title="Total Commissions"
+                value={affiliateStats.totalCommissions}
+                change={12.4}
+                icon={DollarSign}
+                color="bg-purple-600"
+                prefix="$"
+              />
+              <MetricCard
+                title="Monthly Commissions"
+                value={affiliateStats.monthlyCommissions}
+                change={18.9}
+                icon={Award}
+                color="bg-orange-600"
+                prefix="$"
+              />
+            </div>
+
+            {/* Search and Filters */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <div className="flex-1 max-w-lg">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search by name, email, or affiliate code..."
+                      value={affiliateSearchTerm}
+                      onChange={(e) => setAffiliateSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Performers */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Top Performers</h3>
+              <div className="space-y-3">
+                {affiliateStats.topPerformers?.slice(0, 5).map((affiliate, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mr-3">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{affiliate.name}</p>
+                        <p className="text-sm text-gray-500">{affiliate.affiliateCode}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{affiliate.totalReferrals} referrals</p>
+                      <p className="text-sm text-green-600">${affiliate.totalCommissions?.toFixed(2) || '0.00'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Affiliates Table */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Affiliate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Referrals</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commissions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredAffiliates.map((affiliate) => (
+                      <tr key={affiliate._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{affiliate.name}</div>
+                            <div className="text-sm text-gray-500">{affiliate.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{affiliate.affiliateCode}</span>
+                            <button
+                              onClick={() => copyReferralLink(affiliate.affiliateCode)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            affiliate.status === 'active' ? 'bg-green-100 text-green-800' :
+                            affiliate.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {affiliate.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {affiliate.totalReferrals}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          ${affiliate.totalCommissions?.toFixed(2) || '0.00'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {new Date(affiliate.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setSelectedAffiliate(affiliate)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => copyReferralLink(affiliate.affiliateCode)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <Link2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => deleteAffiliate(affiliate._id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'analytics' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -719,8 +1102,9 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Lead Details Modal */}
+      {/* Modals */}
       <LeadDetailsModal />
+      <AffiliateDetailsModal />
     </div>
   );
 };
