@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, ArrowRight, Phone, Mail, MapPin, Star, Clock, TrendingUp, AlertCircle, Loader2, X } from 'lucide-react';
+import AdminDashboard from './AdminDashboard';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -50,7 +52,7 @@ const trackConversion = (conversionType, value = 0) => {
   });
 };
 
-function App() {
+function MainApp() {
   // API URL - use relative path for same-domain API
   const API_URL = '';
   const [currentStep, setCurrentStep] = useState('overview');
@@ -72,7 +74,6 @@ function App() {
   });
   const [formErrors, setFormErrors] = useState({});
   const [referralInfo, setReferralInfo] = useState(null);
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   // Initialize Analytics on component mount
   useEffect(() => {
@@ -335,7 +336,7 @@ function App() {
 
 
   // Admin Dashboard Component
-  const AdminDashboard = () => {
+  const OldAdminDashboard = () => {
     const [applications, setApplications] = useState([]);
     const [stats, setStats] = useState({
       totalApplications: 0,
@@ -383,7 +384,7 @@ function App() {
       }
     };
 
-    if (!showAdminDashboard) return null;
+    return null; // Disabled - use /admin route instead
 
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
@@ -533,23 +534,6 @@ function App() {
     );
   };
 
-  // Admin access via secret key combination
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Admin access: Ctrl + Shift + A
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        e.preventDefault();
-        setShowAdminDashboard(true);
-        trackEvent('admin_access', {
-          session_id: sessionId,
-          timestamp: Date.now()
-        });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [sessionId]);
 
   // Referral Bonus Banner Component
   const ReferralBanner = () => {
@@ -579,7 +563,6 @@ function App() {
   if (currentStep === 'overview') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        <AdminDashboard />
         <ReferralBanner />
         
         {/* Sticky CTA Bar */}
@@ -1410,6 +1393,18 @@ function App() {
       </div>
     );
   }
+}
+
+// Main App component with routing
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
