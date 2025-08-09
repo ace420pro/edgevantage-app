@@ -45,10 +45,8 @@ const AdminDashboard = () => {
   const [selectedAffiliate, setSelectedAffiliate] = useState(null);
   const [affiliateSearchTerm, setAffiliateSearchTerm] = useState('');
 
-  // API base URL
-  const API_URL = process.env.NODE_ENV === 'production' 
-    ? '/api'
-    : 'http://localhost:5000/api';
+  // API base URL - use relative path for same-domain API
+  const API_URL = '/api';
 
   useEffect(() => {
     fetchDashboardData();
