@@ -21,7 +21,7 @@ const trackEvent = (eventName, properties = {}) => {
   }
   
   // Console log for development
-  console.log(' Analytics Event:', eventName, properties);
+  console.log(' Analytics Event:', eventName, properties);
 };
 
 const trackPageView = (pageName) => {
@@ -31,7 +31,7 @@ const trackPageView = (pageName) => {
       page_location: window.location.href,
     });
   }
-  console.log(' Page View:', pageName);
+  console.log(' Page View:', pageName);
 };
 
 const trackFormProgress = (step, completionPercentage) => {
@@ -88,7 +88,7 @@ function MainApp() {
     // Initialize heatmap tracking (Hotjar/Microsoft Clarity simulation)
     if (typeof window !== 'undefined') {
       // Simulate heatmap initialization
-      console.log(' Heatmap tracking initialized');
+      console.log(' Heatmap tracking initialized');
     }
   }, [sessionId, startTime]);
 
@@ -315,6 +315,7 @@ function MainApp() {
     }
   };
 
+
   const canProceedToApplication = () => {
     return formData.hasResidence === 'yes' && 
            formData.hasInternet === 'yes' && 
@@ -332,6 +333,208 @@ function MainApp() {
            canProceedToApplication();
   };
 
+
+
+  // Admin Dashboard Component
+  const OldAdminDashboard = () => {
+    const [applications, setApplications] = useState([]);
+    const [stats, setStats] = useState({
+      totalApplications: 0,
+      statusBreakdown: {},
+      qualifiedCount: 0,
+      notQualifiedCount: 0,
+      totalReferrals: 0,
+      topStates: [],
+      referralSources: [],
+      avgMonthlyPayout: 0,
+      recentApplications: []
+    });
+    const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+
+    // Fetch data when dashboard opens
+    useEffect(() => {
+      if (showAdminDashboard) {
+        fetchDashboardData();
+      }
+    }, [showAdminDashboard]);
+
+    const fetchDashboardData = async () => {
+      setIsLoadingDashboard(true);
+      try {
+        // Fetch applications and stats in parallel
+        const [applicationsResponse, statsResponse] = await Promise.all([
+          fetch('/api/leads?limit=20'),
+          fetch('/api/leads-stats')
+        ]);
+
+        if (applicationsResponse.ok) {
+          const applicationsData = await applicationsResponse.json();
+          setApplications(applicationsData.leads || []);
+        }
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // Keep default empty state
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+    };
+
+    return null; // Disabled - use /admin route instead
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+        <div className="min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-7xl mx-auto p-8">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900">EdgeVantage Admin Dashboard</h2>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={fetchDashboardData}
+                  disabled={isLoadingDashboard}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {isLoadingDashboard ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                  )}
+                  Refresh Data
+                </button>
+                <button
+                  onClick={() => setShowAdminDashboard(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-8 h-8" />
+                </button>
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {isLoadingDashboard && (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-gray-600">Loading dashboard data...</p>
+              </div>
+            )}
+
+            {/* Stats Overview */}
+            {!isLoadingDashboard && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-blue-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-blue-600 mb-2">Total Applications</h3>
+                  <p className="text-3xl font-bold text-blue-900">{stats.totalApplications}</p>
+                  <p className="text-sm text-blue-600 mt-1">All submissions</p>
+                </div>
+                <div className="bg-green-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-green-600 mb-2">Qualified</h3>
+                  <p className="text-3xl font-bold text-green-900">{stats.qualifiedCount}</p>
+                  <p className="text-sm text-green-600 mt-1">{stats.totalApplications ? Math.round((stats.qualifiedCount / stats.totalApplications) * 100) : 0}% qualification rate</p>
+                </div>
+                <div className="bg-yellow-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-yellow-600 mb-2">Avg Monthly Payout</h3>
+                  <p className="text-3xl font-bold text-yellow-900">${Math.round(stats.avgMonthlyPayout || 0)}</p>
+                  <p className="text-sm text-yellow-600 mt-1">Per member</p>
+                </div>
+                <div className="bg-purple-50 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-purple-600 mb-2">Referrals</h3>
+                  <p className="text-3xl font-bold text-purple-900">{stats.totalReferrals}</p>
+                  <p className="text-sm text-purple-600 mt-1">{stats.totalApplications ? Math.round((stats.totalReferrals / stats.totalApplications) * 100) : 0}% of applications</p>
+                </div>
+              </div>
+            )}
+
+            {/* Top States */}
+            {!isLoadingDashboard && stats.topStates.length > 0 && (
+              <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Top States by Applications</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {stats.topStates.slice(0, 4).map((item, index) => (
+                    <div key={index} className="text-center">
+                      <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+                      <p className="text-sm text-gray-600">{item._id}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recent Applications */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-xl font-bold text-gray-900">Recent Applications</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referral</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earnings</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {applications.length === 0 && !isLoadingDashboard ? (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          No applications found
+                        </td>
+                      </tr>
+                    ) : (
+                      applications.map((app) => (
+                        <tr key={app._id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{app.name}</div>
+                              <div className="text-sm text-gray-500">{app.email}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {app.city}, {app.state}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              app.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              app.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {app.status}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {app.qualified ? 'Qualified' : 'Not Qualified'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {app.referralCode || 'Direct'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${app.monthlyEarnings || 0}/mo
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(app.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
   // Referral Bonus Banner Component
   const ReferralBanner = () => {
     if (!referralInfo || !referralInfo.isValid) return null;
@@ -341,7 +544,7 @@ function MainApp() {
         <div className="flex items-center justify-center space-x-2">
           <Star className="w-5 h-5 text-yellow-300" />
           <span className="font-semibold">
-             Referred by {referralInfo.referrerName}! You'll get an extra ${referralInfo.bonus} bonus when approved!
+             Referred by {referralInfo.referrerName}! You'll get an extra ${referralInfo.bonus} bonus when approved!
           </span>
           <Star className="w-5 h-5 text-yellow-300" />
         </div>
@@ -366,8 +569,8 @@ function MainApp() {
         <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-2 px-4 text-center text-sm font-medium z-40 shadow-lg" style={{ marginTop: referralInfo ? '48px' : '0' }}>
           <div className="flex items-center justify-center space-x-2">
             <TrendingUp className="w-4 h-4" />
-            <span className="hidden sm:inline"> Limited spots available - Join 500+ earning members today!</span>
-            <span className="sm:hidden"> Limited spots - Join 500+ members!</span>
+            <span className="hidden sm:inline"> Limited spots available - Join 500+ earning members today!</span>
+            <span className="sm:hidden"> Limited spots - Join 500+ members!</span>
           </div>
         </div>
 
@@ -1073,12 +1276,12 @@ function MainApp() {
               <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600" />
             </div>
             
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">Application Submitted Successfully! </h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">Application Submitted Successfully! </h2>
             
             <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6 sm:p-8 mb-8 sm:mb-10">
               <h3 className="text-xl sm:text-2xl font-bold text-emerald-800 mb-2 sm:mb-3">
                 Welcome to EdgeVantage, {formData.name}!
-                {referralInfo && <span className="block text-lg">+ $50 Referral Bonus! </span>}
+                {referralInfo && <span className="block text-lg">+ $50 Referral Bonus! </span>}
               </h3>
               <p className="text-emerald-700 text-base sm:text-lg leading-relaxed">
                 Your application has been received and is being reviewed. Here's what happens next:
@@ -1087,7 +1290,7 @@ function MainApp() {
 
             {/* Referral Link Generator */}
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-2xl p-6 sm:p-8 mb-8 sm:mb-10">
-              <h4 className="text-xl font-bold text-gray-900 mb-3"> Start Earning Referral Bonuses!</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3"> Start Earning Referral Bonuses!</h4>
               <p className="text-gray-600 mb-4">Share EdgeVantage with friends and earn $50 for each person who gets approved!</p>
               <button
                 onClick={copyReferralLink}
@@ -1182,7 +1385,7 @@ function MainApp() {
               
               {/* Debug info for admin (hidden in production) */}
               <div className="text-xs text-gray-400 pt-4 border-t border-gray-200">
-                Session ID: {sessionId} | Admin Dashboard at /admin
+                Session ID: {sessionId} | Admin Access: Ctrl+Shift+A
               </div>
             </div>
           </div>
