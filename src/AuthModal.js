@@ -27,12 +27,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('Passwords do not match');
       }
 
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const action = isLogin ? 'login' : 'register';
       const body = isLogin 
-        ? { email: formData.email, password: formData.password }
-        : { email: formData.email, password: formData.password, name: formData.name };
+        ? { action, email: formData.email, password: formData.password }
+        : { action, email: formData.email, password: formData.password, name: formData.name };
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetch(`${API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

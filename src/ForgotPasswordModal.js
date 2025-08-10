@@ -15,10 +15,10 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+      const response = await fetch(`${API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ action: 'forgot-password', email })
       });
 
       const data = await response.json();

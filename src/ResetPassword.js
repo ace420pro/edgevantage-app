@@ -42,10 +42,11 @@ const ResetPassword = () => {
         throw new Error('Password must be at least 6 characters long');
       }
 
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
+      const response = await fetch(`${API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'reset-password',
           token: token,
           newPassword: password
         })
