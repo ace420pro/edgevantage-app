@@ -3,6 +3,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Load environment variables
 dotenv.config();
@@ -154,6 +156,59 @@ leadSchema.index({ createdAt: -1 });
 leadSchema.index({ referralCode: 1 });
 
 const Lead = mongoose.model('Lead', leadSchema);
+
+// User Schema for authentication
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  // Link to their application if they have one
+  applicationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lead',
+    default: null
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Add indexes
+userSchema.index({ email: 1 });
+userSchema.index({ applicationId: 1 });
+
+const User = mongoose.model('User', userSchema);
 
 // Affiliate Schema
 const affiliateSchema = new mongoose.Schema({
@@ -326,7 +381,182 @@ commissionSchema.index({ createdAt: -1 });
 const Affiliate = mongoose.model('Affiliate', affiliateSchema);
 const Commission = mongoose.model('Commission', commissionSchema);
 
+// JWT Secret - in production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Helper function to generate JWT
+const generateToken = (user) => {
+  return jwt.sign(
+    { 
+      id: user._id, 
+      email: user.email, 
+      role: user.role 
+    },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
+
 // Routes
+
+// Authentication endpoint
+app.post('/api/auth', async (req, res) => {
+  try {
+    const { action, email, password, name } = req.body;
+
+    if (action === 'login') {
+      // Login existing user
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ error: 'Invalid email or password' });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ error: 'Invalid email or password' });
+      }
+
+      // Check if user has an application
+      let application = null;
+      if (user.applicationId) {
+        application = await Lead.findById(user.applicationId);
+      } else {
+        // Try to find application by email
+        application = await Lead.findOne({ email: user.email });
+        if (application) {
+          // Link the application to the user
+          user.applicationId = application._id;
+          await user.save();
+        }
+      }
+
+      const token = generateToken(user);
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isVerified: user.isVerified
+        },
+        application
+      });
+
+    } else if (action === 'register') {
+      // Register new user
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ error: 'User already exists with this email' });
+      }
+
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Check if there's already an application for this email
+      let application = await Lead.findOne({ email });
+      let applicationId = application ? application._id : null;
+
+      // Create new user
+      const newUser = new User({
+        name,
+        email,
+        password: hashedPassword,
+        applicationId,
+        updatedAt: Date.now()
+      });
+
+      const savedUser = await newUser.save();
+
+      // If application exists, update it to link to the user
+      if (application && !application.userId) {
+        application.userId = savedUser._id;
+        await application.save();
+      }
+
+      const token = generateToken(savedUser);
+
+      console.log(`✅ New user registered: ${savedUser.email}`);
+
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        token,
+        user: {
+          id: savedUser._id,
+          name: savedUser.name,
+          email: savedUser.email,
+          role: savedUser.role,
+          isVerified: savedUser.isVerified
+        },
+        application
+      });
+
+    } else {
+      res.status(400).json({ error: 'Invalid action' });
+    }
+
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(500).json({ 
+      error: 'Authentication failed',
+      details: error.message 
+    });
+  }
+});
+
+// Get user profile (protected route)
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get application if linked
+    let application = null;
+    if (user.applicationId) {
+      application = await Lead.findById(user.applicationId);
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt
+      },
+      application
+    });
+
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
 
 // Submit new application
 app.post('/api/leads', async (req, res) => {
