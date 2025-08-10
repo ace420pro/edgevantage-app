@@ -64,12 +64,16 @@ const AdminDashboard = () => {
   }, [dateRange, statusFilter, activeTab]);
 
   const fetchDashboardData = async () => {
+    console.log('Fetching dashboard data...');
     setIsLoading(true);
     try {
       const [leadsResponse, statsResponse] = await Promise.all([
         fetch(`${API_URL}/api/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
         fetch(`${API_URL}/api/leads-stats`)
       ]);
+      
+      console.log('Leads response status:', leadsResponse.status);
+      console.log('Stats response status:', statsResponse.status);
 
       if (leadsResponse.ok) {
         const leadsData = await leadsResponse.json();
@@ -135,8 +139,9 @@ const AdminDashboard = () => {
 
       if (response.ok) {
         console.log('Update successful, refreshing dashboard...');
-        fetchDashboardData();
+        await fetchDashboardData();
         setSelectedLead(null);
+        alert('Lead updated successfully!');
       } else {
         console.error('Update failed:', data);
         alert(`Failed to update lead: ${data.error || 'Unknown error'}`);
