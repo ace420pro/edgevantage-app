@@ -117,11 +117,14 @@ export default async function handler(req, res) {
       }
       
       console.log('PATCH request for lead ID:', id);
+      console.log('ID type:', typeof id);
+      console.log('ID length:', id.length);
       
       // Validate ObjectId format
       let objectId;
       try {
         objectId = new ObjectId(id);
+        console.log('Successfully created ObjectId:', objectId);
       } catch (error) {
         console.error('Invalid ObjectId format:', id, error);
         return res.status(400).json({ error: 'Invalid lead ID format' });
@@ -135,10 +138,15 @@ export default async function handler(req, res) {
       console.log('Updates to apply:', updates);
       
       // Check if status is being updated
+      console.log('Searching for lead with ObjectId:', objectId);
       const oldLead = await collection.findOne({ _id: objectId });
+      console.log('Found lead:', oldLead ? 'YES' : 'NO');
       
       if (!oldLead) {
-        console.log('Lead not found with ID:', id);
+        console.log('Lead not found with ID:', id, 'ObjectId:', objectId);
+        // Let's also try to find all leads to debug
+        const allLeads = await collection.find({}).limit(5).toArray();
+        console.log('Sample leads in database:', allLeads.map(l => ({ id: l._id.toString(), email: l.email })));
         return res.status(404).json({ error: 'Lead not found' });
       }
       
