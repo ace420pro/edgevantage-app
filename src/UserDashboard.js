@@ -31,7 +31,7 @@ const UserDashboard = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/user/profile`, {
+      const response = await fetch(`${API_URL}/api/user/dashboard`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
