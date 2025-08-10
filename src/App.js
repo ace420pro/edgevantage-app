@@ -51,8 +51,8 @@ const trackConversion = (conversionType, value = 0) => {
 };
 
 function App() {
-  // API URL configuration - use environment variable or fallback to localhost for development
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // API URL - use relative path for same-domain API
+  const API_URL = '';
   const [currentStep, setCurrentStep] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
@@ -264,7 +264,7 @@ function App() {
       
       try {
         // Submit to backend API
-        const response = await fetch(`${API_URL}/api/leads`, {
+        const response = await fetch('/api/leads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -362,8 +362,8 @@ function App() {
       try {
         // Fetch applications and stats in parallel
         const [applicationsResponse, statsResponse] = await Promise.all([
-          fetch(`${API_URL}/api/leads?limit=20`),
-          fetch(`${API_URL}/api/leads/stats`)
+          fetch('/api/leads?limit=20'),
+          fetch('/api/leads-stats')
         ]);
 
         if (applicationsResponse.ok) {
