@@ -120,7 +120,7 @@ const AdminDashboard = () => {
 
   const updateLeadStatus = async (leadId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+      const response = await fetch(`${API_URL}/api/leads?id=${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -137,7 +137,7 @@ const AdminDashboard = () => {
 
   const updateAffiliateStatus = async (affiliateId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/api/affiliates/${affiliateId}`, {
+      const response = await fetch(`${API_URL}/api/affiliates?id=${affiliateId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -156,7 +156,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+      const response = await fetch(`${API_URL}/api/leads?id=${leadId}`, {
         method: 'DELETE'
       });
 
@@ -172,7 +172,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this affiliate?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/affiliates/${affiliateId}`, {
+      const response = await fetch(`${API_URL}/api/affiliates?id=${affiliateId}`, {
         method: 'DELETE'
       });
 
