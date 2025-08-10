@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, ArrowRight, Phone, Mail, MapPin, Star, Clock, TrendingUp, AlertCircle, Loader2, X } from 'lucide-react';
+import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, ArrowRight, Phone, Mail, MapPin, Star, Clock, TrendingUp, AlertCircle, Loader2, X, User as UserIcon } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
+import UserDashboard from './UserDashboard';
+import AuthModal from './AuthModal';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -59,6 +61,19 @@ function MainApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
   const [startTime] = useState(Date.now());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  // Handle auth success
+  const handleAuthSuccess = (data) => {
+    setCurrentUser(data.user);
+    setShowAuthModal(false);
+    
+    // If they have an application, redirect to dashboard
+    if (data.application) {
+      window.location.href = '/account';
+    }
+  };
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -77,6 +92,19 @@ function MainApp() {
 
   // Initialize Analytics on component mount
   useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    if (token && userData) {
+      try {
+        setCurrentUser(JSON.parse(userData));
+      } catch (e) {
+        // Invalid user data, clear it
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+
     // Track initial page load
     trackPageView('Landing Page');
     trackEvent('page_view', {
@@ -395,6 +423,23 @@ function MainApp() {
                   <Shield className="w-4 h-4 text-blue-600" />
                   <span className="font-medium">Fully Secure</span>
                 </div>
+                {currentUser ? (
+                  <button
+                    onClick={() => window.location.href = '/account'}
+                    className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-full font-semibold hover:bg-purple-200 transition-all"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition-all"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span>Login</span>
+                  </button>
+                )}
                 <button
                   onClick={handleNext}
                   className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:shadow-lg transition-all"
@@ -402,13 +447,30 @@ function MainApp() {
                   Apply Now
                 </button>
               </div>
-              {/* Mobile CTA */}
-              <button
-                onClick={handleNext}
-                className="lg:hidden bg-gradient-to-r from-emerald-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-semibold"
-              >
-                Apply
-              </button>
+              {/* Mobile Menu */}
+              <div className="lg:hidden flex items-center space-x-2">
+                {currentUser ? (
+                  <button
+                    onClick={() => window.location.href = '/account'}
+                    className="p-2 text-purple-600"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="p-2 text-gray-600"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                  </button>
+                )}
+                <button
+                  onClick={handleNext}
+                  className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-semibold"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -1040,6 +1102,13 @@ function MainApp() {
             )}
           </div>
         </div>
+        
+        {/* Auth Modal */}
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     );
   }
@@ -1187,6 +1256,13 @@ function MainApp() {
             </div>
           </div>
         </div>
+        
+        {/* Auth Modal */}
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     );
   }
@@ -1199,6 +1275,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainApp />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/account" element={<UserDashboard />} />
       </Routes>
     </Router>
   );
