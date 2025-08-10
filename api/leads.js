@@ -116,16 +116,34 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Lead ID is required' });
       }
       
+      console.log('PATCH request for lead ID:', id);
+      
+      // Validate ObjectId format
+      let objectId;
+      try {
+        objectId = new ObjectId(id);
+      } catch (error) {
+        console.error('Invalid ObjectId format:', id, error);
+        return res.status(400).json({ error: 'Invalid lead ID format' });
+      }
+      
       const updates = {
         ...req.body,
         updatedAt: new Date()
       };
       
+      console.log('Updates to apply:', updates);
+      
       // Check if status is being updated
-      const oldLead = await collection.findOne({ _id: new ObjectId(id) });
+      const oldLead = await collection.findOne({ _id: objectId });
+      
+      if (!oldLead) {
+        console.log('Lead not found with ID:', id);
+        return res.status(404).json({ error: 'Lead not found' });
+      }
       
       const result = await collection.findOneAndUpdate(
-        { _id: new ObjectId(id) },
+        { _id: objectId },
         { $set: updates },
         { returnDocument: 'after' }
       );
@@ -161,7 +179,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Lead ID is required' });
       }
       
-      const result = await collection.findOneAndDelete({ _id: new ObjectId(id) });
+      console.log('DELETE request for lead ID:', id);
+      
+      // Validate ObjectId format
+      let objectId;
+      try {
+        objectId = new ObjectId(id);
+      } catch (error) {
+        console.error('Invalid ObjectId format:', id, error);
+        return res.status(400).json({ error: 'Invalid lead ID format' });
+      }
+      
+      const result = await collection.findOneAndDelete({ _id: objectId });
       
       if (!result.value) {
         return res.status(404).json({ error: 'Lead not found' });
