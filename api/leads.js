@@ -1,4 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb';
+import { sendEmail } from './lib/email-service.js';
+import { generateSetupToken } from './lib/auth.js';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
@@ -54,13 +56,29 @@ export default async function handler(req, res) {
       };
       
       const result = await collection.insertOne(lead);
+      const leadId = result.insertedId;
       
       console.log(`✅ New lead saved: ${lead.email} - Qualified: ${qualified}`);
+      
+      // Generate setup token for account creation
+      const setupToken = generateSetupToken(lead.email, leadId.toString());
+      
+      // Send confirmation email (async, don't wait)
+      sendEmail(lead.email, 'applicationConfirmation', {
+        name: lead.name,
+        qualified: qualified,
+        applicationId: leadId.toString(),
+        submittedAt: lead.createdAt,
+        setupToken: setupToken,
+        referralCode: lead.referralCode || null
+      }).catch(error => {
+        console.error('Failed to send confirmation email:', error);
+      });
       
       return res.status(201).json({ 
         success: true,
         message: 'Application submitted successfully',
-        leadId: result.insertedId,
+        leadId: leadId,
         qualified: qualified
       });
     }
@@ -103,6 +121,9 @@ export default async function handler(req, res) {
         updatedAt: new Date()
       };
       
+      // Check if status is being updated
+      const oldLead = await collection.findOne({ _id: new ObjectId(id) });
+      
       const result = await collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: updates },
@@ -111,6 +132,17 @@ export default async function handler(req, res) {
       
       if (!result.value) {
         return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      // Send status update email if status changed
+      if (oldLead && oldLead.status !== updates.status && updates.status) {
+        sendEmail(result.value.email, 'statusUpdate', {
+          name: result.value.name,
+          newStatus: updates.status,
+          message: getStatusMessage(updates.status)
+        }).catch(error => {
+          console.error('Failed to send status update email:', error);
+        });
       }
       
       console.log(`✅ Lead updated: ${id}`);
@@ -151,4 +183,14 @@ export default async function handler(req, res) {
       error: 'Database operation failed. Please try again.'
     });
   }
+}
+
+function getStatusMessage(status) {
+  const messages = {
+    'approved': 'Great news! Your application has been approved. Your equipment will be shipped soon.',
+    'contacted': 'Our team has reached out to you. Please check your email or phone for our message.',
+    'rejected': 'Unfortunately, your application does not meet our current requirements. You may reapply in the future.',
+    'pending': 'Your application is currently under review. We will contact you soon.'
+  };
+  return messages[status] || 'Your application status has been updated.';
 }
