@@ -120,15 +120,26 @@ const AdminDashboard = () => {
 
   const updateLeadStatus = async (leadId, updates) => {
     try {
+      console.log('Updating lead:', leadId, 'with updates:', updates);
+      console.log('API URL:', `${API_URL}/api/leads?id=${leadId}`);
+      
       const response = await fetch(`${API_URL}/api/leads?id=${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
 
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
       if (response.ok) {
+        console.log('Update successful, refreshing dashboard...');
         fetchDashboardData();
         setSelectedLead(null);
+      } else {
+        console.error('Update failed:', data);
+        alert(`Failed to update lead: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to update lead:', error);
@@ -353,7 +364,10 @@ const AdminDashboard = () => {
               </button>
               <button
                 onClick={() => {
+                  console.log('Save button clicked');
+                  console.log('Current selectedLead:', selectedLead);
                   const { _id, status, monthlyEarnings, notes } = selectedLead;
+                  console.log('Extracted values - ID:', _id, 'Status:', status, 'Earnings:', monthlyEarnings, 'Notes:', notes);
                   updateLeadStatus(_id, { status, monthlyEarnings, notes });
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
