@@ -71,6 +71,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
   };
 
+  console.log('AuthModal render - isOpen:', isOpen);
   if (!isOpen) return null;
 
   return (

@@ -387,10 +387,11 @@ function MainApp() {
     );
   };
 
-  if (currentStep === 'overview') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        <ReferralBanner />
+  const renderContent = () => {
+    if (currentStep === 'overview') {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+          <ReferralBanner />
         
         {/* Sticky CTA Bar */}
         <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-2 px-4 text-center text-sm font-medium z-40 shadow-lg" style={{ marginTop: referralInfo ? '48px' : '0' }}>
@@ -436,8 +437,9 @@ function MainApp() {
                 ) : (
                   <button
                     onClick={() => {
-                      console.log('Login button clicked, opening modal...');
+                      console.log('Login button clicked, current showAuthModal state:', showAuthModal);
                       setShowAuthModal(true);
+                      console.log('Set showAuthModal to true');
                     }}
                     className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition-all"
                   >
@@ -743,12 +745,12 @@ function MainApp() {
             <p className="text-blue-200 text-sm mt-4 sm:mt-6">Free to apply • Instant qualification • 21+ only • US residents</p>
           </div>
         </section>
-      </div>
-    );
-  }
+        </div>
+      );
+    }
 
-  if (currentStep === 'application') {
-    return (
+    if (currentStep === 'application') {
+      return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
         {/* Header - Mobile Optimized */}
         <header className="bg-white/80 backdrop-blur-sm border-b border-blue-100">
@@ -1111,21 +1113,15 @@ function MainApp() {
           </div>
         </div>
         
-        {/* Auth Modal */}
-        <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-        />
-      </div>
-    );
-  }
+        </div>
+      );
+    }
 
-  if (currentStep === 'confirmation') {
-    const generateReferralLink = () => {
-      const referralCode = formData.name.split(' ').map(n => n.substring(0, 3).toUpperCase()).join('') + Math.floor(Math.random() * 100);
-      return `${window.location.origin}?ref=${referralCode}`;
-    };
+    if (currentStep === 'confirmation') {
+      const generateReferralLink = () => {
+        const referralCode = formData.name.split(' ').map(n => n.substring(0, 3).toUpperCase()).join('') + Math.floor(Math.random() * 100);
+        return `${window.location.origin}?ref=${referralCode}`;
+      };
 
     const copyReferralLink = async () => {
       const link = generateReferralLink();
@@ -1142,8 +1138,8 @@ function MainApp() {
       }
     };
 
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 text-center border border-gray-200">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 animate-in zoom-in duration-500">
@@ -1265,15 +1261,23 @@ function MainApp() {
           </div>
         </div>
         
-        {/* Auth Modal */}
-        <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-        />
-      </div>
-    );
-  }
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div>
+      {renderContent()}
+      
+      {/* Auth Modal - Always rendered */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
+    </div>
+  );
 }
 
 // Main App component with routing
