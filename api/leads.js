@@ -30,6 +30,11 @@ export default async function handler(req, res) {
     const client = await connectToDatabase();
     const db = client.db('edgevantage');
     const collection = db.collection('leads');
+    
+    // Debug database connection
+    console.log('Database connected, database name:', db.databaseName);
+    const collectionInfo = await db.listCollections({ name: 'leads' }).toArray();
+    console.log('Leads collection exists:', collectionInfo.length > 0);
 
     if (req.method === 'POST') {
       // Check if all qualification questions are "yes"
