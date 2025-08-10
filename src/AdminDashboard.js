@@ -77,11 +77,15 @@ const AdminDashboard = () => {
 
       if (leadsResponse.ok) {
         const leadsData = await leadsResponse.json();
+        console.log('Fetched leads count:', leadsData.leads?.length || 0);
         setLeads(leadsData.leads || []);
+      } else {
+        console.error('Leads fetch failed:', leadsResponse.status);
       }
 
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
+        console.log('Fetched stats:', statsData);
         const conversionRate = statsData.totalApplications > 0 
           ? (statsData.qualifiedCount / statsData.totalApplications * 100).toFixed(1)
           : 0;
@@ -93,7 +97,11 @@ const AdminDashboard = () => {
           monthlyRevenue: (statsData.statusBreakdown?.approved || 0) * (statsData.avgMonthlyPayout || 750),
           activeMembers: statsData.statusBreakdown?.approved || 0
         });
+      } else {
+        console.error('Stats fetch failed:', statsResponse.status);
       }
+      
+      console.log('Dashboard data refresh completed');
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -134,17 +142,32 @@ const AdminDashboard = () => {
       });
 
       console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('Response data:', data);
+      } catch (parseError) {
+        console.error('Failed to parse response JSON:', parseError);
+        if (response.ok) {
+          // If response is OK but JSON parsing failed, still consider it success
+          console.log('Update likely successful despite JSON parse error, refreshing dashboard...');
+          await fetchDashboardData();
+          setSelectedLead(null);
+          alert('Lead updated successfully!');
+          return;
+        }
+        throw parseError;
+      }
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         console.log('Update successful, refreshing dashboard...');
         await fetchDashboardData();
         setSelectedLead(null);
         alert('Lead updated successfully!');
       } else {
         console.error('Update failed:', data);
-        alert(`Failed to update lead: ${data.error || 'Unknown error'}`);
+        alert(`Failed to update lead: ${data.error || data.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to update lead:', error);
