@@ -45,8 +45,8 @@ const AdminDashboard = () => {
   const [selectedAffiliate, setSelectedAffiliate] = useState(null);
   const [affiliateSearchTerm, setAffiliateSearchTerm] = useState('');
 
-  // API base URL - use environment variable or relative path for same-domain API
-  const API_URL = process.env.REACT_APP_API_URL || '';
+  // API base URL - force relative path since backend and frontend are on same domain
+  const API_URL = '';
 
   useEffect(() => {
     fetchDashboardData();

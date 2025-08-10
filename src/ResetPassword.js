@@ -13,7 +13,7 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const API_URL = process.env.REACT_APP_API_URL || '';
+  const API_URL = '';
 
   useEffect(() => {
     // Get token from URL parameters
