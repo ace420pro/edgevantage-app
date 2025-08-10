@@ -56,8 +56,8 @@ const trackConversion = (conversionType, value = 0) => {
 };
 
 function MainApp() {
-  // API URL - use relative path for same-domain API
-  const API_URL = '';
+  // API URL - use environment variable or relative path for same-domain API
+  const API_URL = process.env.REACT_APP_API_URL || '';
   const [currentStep, setCurrentStep] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
@@ -294,7 +294,7 @@ function MainApp() {
       
       try {
         // Submit to backend API
-        const response = await fetch('/api/leads', {
+        const response = await fetch(`${API_URL}/api/leads`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

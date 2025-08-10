@@ -13,7 +13,7 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const API_URL = '/api';
+  const API_URL = process.env.REACT_APP_API_URL || '';
 
   useEffect(() => {
     // Get token from URL parameters
@@ -42,7 +42,7 @@ const ResetPassword = () => {
         throw new Error('Password must be at least 6 characters long');
       }
 
-      const response = await fetch(`${API_URL}/auth`, {
+      const response = await fetch(`${API_URL}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

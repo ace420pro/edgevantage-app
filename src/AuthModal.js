@@ -15,7 +15,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     confirmPassword: ''
   });
 
-  const API_URL = '/api';
+  const API_URL = process.env.REACT_APP_API_URL || '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +32,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         ? { action, email: formData.email, password: formData.password }
         : { action, email: formData.email, password: formData.password, name: formData.name };
 
-      const response = await fetch(`${API_URL}/auth`, {
+      const response = await fetch(`${API_URL}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

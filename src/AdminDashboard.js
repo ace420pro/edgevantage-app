@@ -45,8 +45,8 @@ const AdminDashboard = () => {
   const [selectedAffiliate, setSelectedAffiliate] = useState(null);
   const [affiliateSearchTerm, setAffiliateSearchTerm] = useState('');
 
-  // API base URL - use relative path for same-domain API
-  const API_URL = '/api';
+  // API base URL - use environment variable or relative path for same-domain API
+  const API_URL = process.env.REACT_APP_API_URL || '';
 
   useEffect(() => {
     fetchDashboardData();
@@ -67,8 +67,8 @@ const AdminDashboard = () => {
     setIsLoading(true);
     try {
       const [leadsResponse, statsResponse] = await Promise.all([
-        fetch(`${API_URL}/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
-        fetch(`${API_URL}/leads-stats`)
+        fetch(`${API_URL}/api/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
+        fetch(`${API_URL}/api/leads-stats`)
       ]);
 
       if (leadsResponse.ok) {
@@ -100,8 +100,8 @@ const AdminDashboard = () => {
   const fetchAffiliateData = async () => {
     try {
       const [affiliatesResponse, affiliateStatsResponse] = await Promise.all([
-        fetch(`${API_URL}/affiliates`),
-        fetch(`${API_URL}/affiliates-stats`)
+        fetch(`${API_URL}/api/affiliates`),
+        fetch(`${API_URL}/api/affiliates-stats`)
       ]);
 
       if (affiliatesResponse.ok) {
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
 
   const updateLeadStatus = async (leadId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/leads/${leadId}`, {
+      const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -137,7 +137,7 @@ const AdminDashboard = () => {
 
   const updateAffiliateStatus = async (affiliateId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
+      const response = await fetch(`${API_URL}/api/affiliates/${affiliateId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -156,7 +156,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/leads/${leadId}`, {
+      const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
         method: 'DELETE'
       });
 
@@ -172,7 +172,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this affiliate?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
+      const response = await fetch(`${API_URL}/api/affiliates/${affiliateId}`, {
         method: 'DELETE'
       });
 

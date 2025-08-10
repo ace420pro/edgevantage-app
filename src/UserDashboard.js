@@ -14,7 +14,7 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState('');
 
-  const API_URL = '/api';
+  const API_URL = process.env.REACT_APP_API_URL || '';
 
   useEffect(() => {
     fetchDashboardData();
@@ -31,7 +31,7 @@ const UserDashboard = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/user/dashboard`, {
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
