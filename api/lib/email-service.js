@@ -183,6 +183,73 @@ const emailTemplates = {
     `
   }),
 
+  // Password reset email
+  passwordReset: (data) => ({
+    subject: 'Reset Your EdgeVantage Password',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .expire-notice { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin: 15px 0; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Password Reset Request</h1>
+            <p style="margin: 10px 0 0 0;">Reset your EdgeVantage account password</p>
+          </div>
+          <div class="content">
+            <h2>Hi ${data.name},</h2>
+            <p>We received a request to reset the password for your EdgeVantage account associated with <strong>${data.email}</strong>.</p>
+            
+            <p>If you made this request, click the button below to reset your password:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'https://edgevantagepro.com'}/reset-password?token=${data.resetToken}" 
+                 class="button" 
+                 style="font-size: 16px; font-weight: bold;">
+                Reset My Password
+              </a>
+            </div>
+            
+            <div class="expire-notice">
+              ⏰ <strong>Important:</strong> This link will expire in 1 hour for security reasons.
+            </div>
+            
+            <div class="warning-box">
+              <h3 style="margin-top: 0;">🔒 Security Notice</h3>
+              <p style="margin-bottom: 0;">If you didn't request a password reset, please ignore this email. Your password will remain unchanged. If you're concerned about your account security, please contact our support team.</p>
+            </div>
+            
+            <p>For security reasons, we cannot send your existing password. You'll need to create a new one using the link above.</p>
+            
+            <h3>Need Help?</h3>
+            <p>If you're having trouble with the reset link, you can copy and paste this URL into your browser:</p>
+            <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px;">
+              ${process.env.FRONTEND_URL || 'https://edgevantagepro.com'}/reset-password?token=${data.resetToken}
+            </p>
+            
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
+              Best regards,<br>
+              The EdgeVantage Security Team<br><br>
+              © 2024 EdgeVantage. All rights reserved.<br>
+              If you have questions, reply to this email or visit our help center.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
   // Status update email
   statusUpdate: (data) => ({
     subject: `Application Update: ${data.newStatus}`,

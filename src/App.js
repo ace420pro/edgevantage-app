@@ -4,6 +4,7 @@ import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monit
 import AdminDashboard from './AdminDashboard';
 import UserDashboard from './UserDashboard';
 import AuthModal from './AuthModal';
+import ResetPassword from './ResetPassword';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -1276,6 +1277,7 @@ function App() {
         <Route path="/" element={<MainApp />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/account" element={<UserDashboard />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </Router>
   );

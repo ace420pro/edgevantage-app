@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -194,6 +196,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
               </label>
               <button
                 type="button"
+                onClick={() => setShowForgotPassword(true)}
                 className="text-sm text-purple-600 hover:text-purple-700"
               >
                 Forgot password?
@@ -235,6 +238,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             </button>
           </p>
         </div>
+
+        {/* Forgot Password Modal */}
+        <ForgotPasswordModal 
+          isOpen={showForgotPassword} 
+          onClose={() => setShowForgotPassword(false)} 
+        />
       </div>
     </div>
   );
