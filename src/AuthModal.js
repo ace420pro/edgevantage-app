@@ -32,6 +32,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         ? { action, email: formData.email, password: formData.password }
         : { action, email: formData.email, password: formData.password, name: formData.name };
 
+      console.log('Auth API URL:', `${API_URL}/api/auth`);
       const response = await fetch(`${API_URL}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -294,6 +294,7 @@ function MainApp() {
       
       try {
         // Submit to backend API
+        console.log('Submitting to API URL:', `${API_URL}/api/leads`);
         const response = await fetch(`${API_URL}/api/leads`, {
           method: 'POST',
           headers: {
@@ -434,7 +435,10 @@ function MainApp() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      console.log('Login button clicked, opening modal...');
+                      setShowAuthModal(true);
+                    }}
                     className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition-all"
                   >
                     <UserIcon className="w-4 h-4" />
@@ -459,7 +463,10 @@ function MainApp() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      console.log('Mobile login button clicked, opening modal...');
+                      setShowAuthModal(true);
+                    }}
                     className="p-2 text-gray-600"
                   >
                     <UserIcon className="w-5 h-5" />
