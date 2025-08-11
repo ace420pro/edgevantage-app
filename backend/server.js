@@ -573,6 +573,95 @@ app.get('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user dashboard data (protected route)
+app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get application if linked
+    let application = null;
+    if (user.applicationId) {
+      application = await Lead.findById(user.applicationId);
+    }
+
+    // Generate progress tracking based on application status
+    let progress = {
+      applied: !!application,
+      reviewed: application && ['approved', 'contacted', 'rejected'].includes(application.status),
+      approved: application && application.status === 'approved',
+      shipped: application && application.equipmentShipped,
+      installed: application && application.equipmentShipped && application.firstPaymentDate,
+      earning: application && application.monthlyEarnings > 0
+    };
+
+    // Mock shipment data if equipment is shipped
+    let shipment = null;
+    if (application && application.equipmentShipped) {
+      shipment = {
+        trackingNumber: 'EV' + Math.random().toString(36).substring(7).toUpperCase(),
+        carrier: 'FedEx',
+        status: application.firstPaymentDate ? 'Delivered' : 'In Transit',
+        estimatedDelivery: application.equipmentShippedDate || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        installationGuideUrl: 'https://docs.edgevantagepro.com/installation-guide'
+      };
+    }
+
+    // Generate earnings data if user is earning
+    let earnings = null;
+    if (application && application.monthlyEarnings > 0) {
+      const monthsEarning = Math.floor((Date.now() - (application.firstPaymentDate || Date.now())) / (30 * 24 * 60 * 60 * 1000)) + 1;
+      earnings = {
+        totalEarnings: application.monthlyEarnings * monthsEarning,
+        averageMonthly: application.monthlyEarnings,
+        lastPayment: {
+          amount: application.monthlyEarnings,
+          date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      };
+    }
+
+    // Mock appointment data for welcome calls
+    let appointment = null;
+    if (application && application.status === 'contacted' && !application.equipmentShipped) {
+      appointment = {
+        scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        type: 'Welcome Call & Setup Instructions',
+        meetingLink: 'https://meet.edgevantagepro.com/welcome-' + user._id
+      };
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt
+      },
+      application: application ? {
+        id: application._id,
+        status: application.status,
+        qualified: application.qualified,
+        monthlyEarnings: application.monthlyEarnings,
+        equipmentShipped: application.equipmentShipped,
+        submittedAt: application.createdAt
+      } : null,
+      progress,
+      shipment,
+      earnings,
+      appointment
+    });
+
+  } catch (error) {
+    console.error('Dashboard fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+  }
+});
+
 // Submit new application
 app.post('/api/leads', async (req, res) => {
   try {
@@ -1093,6 +1182,665 @@ app.get('/api/affiliates-stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching affiliate stats:', error);
     res.status(500).json({ error: 'Failed to fetch affiliate stats' });
+  }
+});
+
+// A/B Testing API endpoints
+
+// A/B Test schema (in-memory for now, should be moved to proper database)
+const abTests = [];
+const abTestResults = {};
+
+// Get all A/B tests
+app.get('/api/ab-tests', (req, res) => {
+  res.json({ tests: abTests });
+});
+
+// Create new A/B test
+app.post('/api/ab-tests', (req, res) => {
+  const test = {
+    id: Math.random().toString(36).substring(7),
+    ...req.body,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  
+  abTests.push(test);
+  
+  // Initialize test results
+  abTestResults[test.id] = {
+    totalViews: 0,
+    variantViews: {},
+    conversions: {}
+  };
+  
+  // Initialize each variant
+  test.variants.forEach(variant => {
+    abTestResults[test.id].variantViews[variant.name] = 0;
+    abTestResults[test.id].conversions[variant.name] = 0;
+  });
+  
+  res.json({ success: true, test });
+});
+
+// Update A/B test
+app.patch('/api/ab-tests/:id', (req, res) => {
+  const testIndex = abTests.findIndex(t => t.id === req.params.id);
+  if (testIndex === -1) {
+    return res.status(404).json({ error: 'Test not found' });
+  }
+  
+  abTests[testIndex] = {
+    ...abTests[testIndex],
+    ...req.body,
+    updatedAt: new Date()
+  };
+  
+  res.json({ success: true, test: abTests[testIndex] });
+});
+
+// Get A/B test results
+app.get('/api/ab-tests/results', (req, res) => {
+  res.json({ results: abTestResults });
+});
+
+// Track A/B test view
+app.post('/api/ab-tests/track-view', (req, res) => {
+  const { testId, variant } = req.body;
+  
+  if (abTestResults[testId]) {
+    abTestResults[testId].totalViews++;
+    if (abTestResults[testId].variantViews[variant] !== undefined) {
+      abTestResults[testId].variantViews[variant]++;
+    }
+  }
+  
+  res.json({ success: true });
+});
+
+// Track A/B test conversion
+app.post('/api/ab-tests/track-conversion', (req, res) => {
+  const { testId, variant } = req.body;
+  
+  if (abTestResults[testId] && abTestResults[testId].conversions[variant] !== undefined) {
+    abTestResults[testId].conversions[variant]++;
+  }
+  
+  res.json({ success: true });
+});
+
+// Get active variant for a test
+app.get('/api/ab-tests/:testId/variant', (req, res) => {
+  const { testId } = req.params;
+  const { userId } = req.query;
+  
+  const test = abTests.find(t => t.id === testId && t.status === 'active');
+  if (!test) {
+    return res.json({ variant: null });
+  }
+  
+  // Simple hash-based assignment for consistent user experience
+  const userHash = userId ? parseInt(userId.slice(-2), 36) % 100 : Math.floor(Math.random() * 100);
+  const trafficSplit = test.trafficSplit || 50;
+  
+  if (userHash < trafficSplit) {
+    // User gets a variant (not control)
+    const variants = test.variants.filter(v => !v.isControl);
+    const variantIndex = userHash % variants.length;
+    res.json({ variant: variants[variantIndex] });
+  } else {
+    // User gets control
+    const controlVariant = test.variants.find(v => v.isControl);
+    res.json({ variant: controlVariant });
+  }
+});
+
+// Course Management System
+
+// Course Schema
+const courseSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  subtitle: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  instructor: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Pricing
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  originalPrice: {
+    type: Number,
+    min: 0
+  },
+  
+  // Course Details
+  level: {
+    type: String,
+    enum: ['Beginner', 'Intermediate', 'Advanced', 'Beginner to Advanced'],
+    required: true
+  },
+  duration: {
+    type: String,
+    required: true
+  },
+  modules: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  lessons: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  
+  // Engagement Metrics
+  students: {
+    type: Number,
+    default: 0
+  },
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
+  reviews: {
+    type: Number,
+    default: 0
+  },
+  
+  // Content
+  thumbnail: {
+    type: String,
+    default: '/api/placeholder/400/225'
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  features: [{
+    type: String,
+    required: true
+  }],
+  curriculum: [{
+    title: String,
+    lessons: Number,
+    duration: String,
+    preview: Boolean
+  }],
+  bonuses: [String],
+  
+  // Status
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'archived'],
+    default: 'draft'
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Tracking
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Enrollment Schema
+const enrollmentSchema = new mongoose.Schema({
+  // Student Info
+  studentEmail: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true
+  },
+  studentName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Course Reference
+  courseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
+  courseTitle: {
+    type: String,
+    required: true
+  },
+  
+  // Payment Info
+  paymentPlan: {
+    type: String,
+    enum: ['full', '3month', '6month'],
+    required: true
+  },
+  amountPaid: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  totalAmount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'partial', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  
+  // Progress Tracking
+  progress: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  completedLessons: [{
+    moduleIndex: Number,
+    lessonIndex: Number,
+    completedAt: Date
+  }],
+  lastAccessedAt: Date,
+  
+  // Status
+  status: {
+    type: String,
+    enum: ['enrolled', 'active', 'completed', 'dropped', 'refunded'],
+    default: 'enrolled'
+  },
+  certificateIssued: {
+    type: Boolean,
+    default: false
+  },
+  certificateIssuedAt: Date,
+  
+  // Tracking
+  enrolledAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Add indexes
+courseSchema.index({ status: 1 });
+courseSchema.index({ featured: 1 });
+courseSchema.index({ createdAt: -1 });
+courseSchema.index({ price: 1 });
+
+enrollmentSchema.index({ studentEmail: 1 });
+enrollmentSchema.index({ courseId: 1 });
+enrollmentSchema.index({ paymentStatus: 1 });
+enrollmentSchema.index({ status: 1 });
+enrollmentSchema.index({ enrolledAt: -1 });
+
+const Course = mongoose.model('Course', courseSchema);
+const Enrollment = mongoose.model('Enrollment', enrollmentSchema);
+
+// Course API Endpoints
+
+// Get all courses (public)
+app.get('/api/courses', async (req, res) => {
+  try {
+    const { status, featured, level, sort } = req.query;
+    
+    const filter = { status: 'published' }; // Only show published courses
+    
+    if (featured) filter.featured = featured === 'true';
+    if (level) filter.level = level;
+    
+    let sortOption = { createdAt: -1 }; // Default: newest first
+    if (sort === 'price-asc') sortOption = { price: 1 };
+    else if (sort === 'price-desc') sortOption = { price: -1 };
+    else if (sort === 'rating') sortOption = { rating: -1 };
+    else if (sort === 'students') sortOption = { students: -1 };
+    
+    const courses = await Course.find(filter).sort(sortOption);
+    
+    res.json({ 
+      success: true, 
+      courses,
+      total: courses.length
+    });
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    res.status(500).json({ error: 'Failed to fetch courses' });
+  }
+});
+
+// Get single course by ID (public)
+app.get('/api/courses/:id', async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    // Only show published courses to public
+    if (course.status !== 'published') {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json({ success: true, course });
+  } catch (error) {
+    console.error('Error fetching course:', error);
+    res.status(500).json({ error: 'Failed to fetch course' });
+  }
+});
+
+// Create course (admin only)
+app.post('/api/courses', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const course = new Course(req.body);
+    await course.save();
+    
+    res.status(201).json({ success: true, course });
+  } catch (error) {
+    console.error('Error creating course:', error);
+    res.status(500).json({ error: 'Failed to create course' });
+  }
+});
+
+// Update course (admin only)
+app.patch('/api/courses/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const course = await Course.findByIdAndUpdate(
+      req.params.id, 
+      { ...req.body, updatedAt: new Date() }, 
+      { new: true }
+    );
+    
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json({ success: true, course });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    res.status(500).json({ error: 'Failed to update course' });
+  }
+});
+
+// Delete course (admin only)
+app.delete('/api/courses/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const course = await Course.findByIdAndDelete(req.params.id);
+    
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    // Also delete related enrollments
+    await Enrollment.deleteMany({ courseId: req.params.id });
+    
+    res.json({ success: true, message: 'Course deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({ error: 'Failed to delete course' });
+  }
+});
+
+// Enrollment API Endpoints
+
+// Create enrollment (course purchase)
+app.post('/api/enrollments', async (req, res) => {
+  try {
+    const { courseId, studentEmail, studentName, paymentPlan, paymentData } = req.body;
+    
+    // Validate course exists
+    const course = await Course.findById(courseId);
+    if (!course || course.status !== 'published') {
+      return res.status(404).json({ error: 'Course not found or not available' });
+    }
+    
+    // Check if student is already enrolled
+    const existingEnrollment = await Enrollment.findOne({
+      courseId,
+      studentEmail,
+      status: { $in: ['enrolled', 'active', 'completed'] }
+    });
+    
+    if (existingEnrollment) {
+      return res.status(400).json({ error: 'Student is already enrolled in this course' });
+    }
+    
+    // Calculate payment amounts based on plan
+    let amountPaid = course.price;
+    let totalAmount = course.price;
+    
+    if (paymentPlan === '3month') {
+      amountPaid = Math.ceil(course.price / 3);
+      totalAmount = amountPaid * 3;
+    } else if (paymentPlan === '6month') {
+      amountPaid = Math.ceil((course.price * 1.1) / 6);
+      totalAmount = amountPaid * 6;
+    }
+    
+    // Create enrollment
+    const enrollment = new Enrollment({
+      studentEmail,
+      studentName,
+      courseId,
+      courseTitle: course.title,
+      paymentPlan,
+      amountPaid,
+      totalAmount,
+      paymentStatus: 'completed', // In real app, this would be based on actual payment processing
+      status: 'enrolled',
+      lastAccessedAt: new Date()
+    });
+    
+    await enrollment.save();
+    
+    // Update course stats
+    await Course.findByIdAndUpdate(courseId, {
+      $inc: { students: 1 }
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      enrollment,
+      message: 'Successfully enrolled in course'
+    });
+    
+  } catch (error) {
+    console.error('Error creating enrollment:', error);
+    res.status(500).json({ error: 'Failed to process enrollment' });
+  }
+});
+
+// Get student's enrollments
+app.get('/api/enrollments/student/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const enrollments = await Enrollment.find({ 
+      studentEmail: email.toLowerCase() 
+    }).populate('courseId').sort({ enrolledAt: -1 });
+    
+    res.json({ 
+      success: true, 
+      enrollments,
+      total: enrollments.length
+    });
+    
+  } catch (error) {
+    console.error('Error fetching student enrollments:', error);
+    res.status(500).json({ error: 'Failed to fetch enrollments' });
+  }
+});
+
+// Get all enrollments (admin only)
+app.get('/api/enrollments', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { status, paymentStatus, courseId } = req.query;
+    
+    const filter = {};
+    if (status) filter.status = status;
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (courseId) filter.courseId = courseId;
+    
+    const enrollments = await Enrollment.find(filter)
+      .populate('courseId')
+      .sort({ enrolledAt: -1 });
+    
+    res.json({ 
+      success: true, 
+      enrollments,
+      total: enrollments.length
+    });
+    
+  } catch (error) {
+    console.error('Error fetching enrollments:', error);
+    res.status(500).json({ error: 'Failed to fetch enrollments' });
+  }
+});
+
+// Update enrollment progress
+app.patch('/api/enrollments/:id/progress', async (req, res) => {
+  try {
+    const { progress, completedLessons } = req.body;
+    
+    const enrollment = await Enrollment.findByIdAndUpdate(
+      req.params.id,
+      {
+        progress,
+        completedLessons,
+        lastAccessedAt: new Date(),
+        updatedAt: new Date(),
+        // Mark as completed if progress is 100%
+        ...(progress >= 100 && { 
+          status: 'completed',
+          certificateIssued: true,
+          certificateIssuedAt: new Date()
+        })
+      },
+      { new: true }
+    );
+    
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+    
+    res.json({ success: true, enrollment });
+    
+  } catch (error) {
+    console.error('Error updating enrollment progress:', error);
+    res.status(500).json({ error: 'Failed to update progress' });
+  }
+});
+
+// Get course analytics (admin only)
+app.get('/api/courses/analytics/summary', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const [
+      totalCourses,
+      publishedCourses,
+      totalEnrollments,
+      activeEnrollments,
+      totalRevenue,
+      completionRate
+    ] = await Promise.all([
+      Course.countDocuments(),
+      Course.countDocuments({ status: 'published' }),
+      Enrollment.countDocuments(),
+      Enrollment.countDocuments({ status: { $in: ['enrolled', 'active'] } }),
+      Enrollment.aggregate([
+        { $match: { paymentStatus: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' } } }
+      ]),
+      Enrollment.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            completed: {
+              $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+            }
+          }
+        }
+      ])
+    ]);
+    
+    const revenue = totalRevenue.length > 0 ? totalRevenue[0].total : 0;
+    const completion = completionRate.length > 0 
+      ? Math.round((completionRate[0].completed / completionRate[0].total) * 100)
+      : 0;
+    
+    res.json({
+      success: true,
+      analytics: {
+        totalCourses,
+        publishedCourses,
+        totalEnrollments,
+        activeEnrollments,
+        totalRevenue: revenue,
+        completionRate: completion
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching course analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
 

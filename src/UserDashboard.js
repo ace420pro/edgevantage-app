@@ -198,9 +198,48 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Application Status Card */}
-          <div className="lg:col-span-2">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'overview'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Dashboard Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('payments')}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'payments'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Payment History
+              </button>
+              <button
+                onClick={() => setActiveTab('account')}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'account'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Account Settings
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Application Status Card */}
+            <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Status</h3>
               {application ? (
@@ -301,23 +340,42 @@ const UserDashboard = () => {
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Earnings Summary</h3>
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Earnings</p>
-                    <p className="text-2xl font-bold text-green-600">${earnings.totalEarnings}</p>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+                    <p className="text-sm text-green-600 font-medium">Total Earnings</p>
+                    <p className="text-3xl font-bold text-green-700">${earnings.totalEarnings.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Monthly Average</p>
-                    <p className="text-xl font-semibold text-gray-900">${earnings.averageMonthly}</p>
-                  </div>
-                  {earnings.lastPayment && (
-                    <div>
-                      <p className="text-sm text-gray-600">Last Payment</p>
-                      <p className="font-medium">${earnings.lastPayment.amount}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(earnings.lastPayment.date).toLocaleDateString()}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-xs text-gray-500">Monthly Average</p>
+                      <p className="text-lg font-bold text-gray-900">${earnings.averageMonthly}</p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-blue-600">Next Payment</p>
+                      <p className="text-sm font-medium text-blue-700">
+                        {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                       </p>
                     </div>
+                  </div>
+                  {earnings.lastPayment && (
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-gray-600 mb-2">Last Payment</p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-green-600">${earnings.lastPayment.amount}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(earnings.lastPayment.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      </div>
+                    </div>
                   )}
+                  <button
+                    onClick={() => setActiveTab('payments')}
+                    className="w-full bg-green-100 hover:bg-green-200 text-green-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    View Payment History
+                  </button>
                 </div>
               </div>
             )}
@@ -375,8 +433,214 @@ const UserDashboard = () => {
                 </button>
               </div>
             </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'payments' && earnings && (
+          <div className="space-y-6">
+            {/* Payment Overview Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <DollarSign className="w-8 h-8 text-green-500" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Total Earned</p>
+                    <p className="text-2xl font-bold text-green-600">${earnings.totalEarnings.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <TrendingUp className="w-8 h-8 text-blue-500" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Monthly Avg</p>
+                    <p className="text-2xl font-bold text-gray-900">${earnings.averageMonthly}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <Calendar className="w-8 h-8 text-purple-500" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Next Payment</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <CheckCircle className="w-8 h-8 text-emerald-500" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Status</p>
+                    <p className="text-lg font-semibold text-emerald-600">Active</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment History Table */}
+            <div className="bg-white rounded-xl shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
+                <p className="text-sm text-gray-600">Your complete payment history and transaction details</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Method
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Transaction ID
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {/* Generate mock payment history */}
+                    {Array.from({ length: 6 }, (_, i) => {
+                      const paymentDate = new Date(Date.now() - (i + 1) * 30 * 24 * 60 * 60 * 1000);
+                      const transactionId = `EV-${paymentDate.getFullYear()}${String(paymentDate.getMonth() + 1).padStart(2, '0')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                      return (
+                        <tr key={i}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {paymentDate.toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-lg font-semibold text-green-600">
+                              ${earnings.averageMonthly}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            Direct Deposit
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Completed
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+                            {transactionId}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Tax Information */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tax Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Year-to-Date Summary</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Total Earnings (2024)</span>
+                      <span className="font-semibold">${earnings.totalEarnings.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Tax Classification</span>
+                      <span className="font-semibold">1099-NEC</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Tax Documents</h4>
+                  <button className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download 1099 (Available Jan 31)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'account' && (
+          <div className="space-y-6">
+            {/* Account Information */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={user?.name || ''}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    />
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3">Account Actions</h4>
+                  <div className="flex flex-wrap gap-3">
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      Update Profile
+                    </button>
+                    <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                      Change Password
+                    </button>
+                    <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
+                      Contact Support
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Settings */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-green-800">Direct Deposit</p>
+                      <p className="text-sm text-green-600">Bank account ending in ****1234</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
+                    Update Banking Info
+                  </button>
+                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    View Tax Forms
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

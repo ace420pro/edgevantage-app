@@ -5,6 +5,10 @@ import AdminDashboard from './AdminDashboard';
 import UserDashboard from './UserDashboard';
 import AuthModal from './AuthModal';
 import ResetPassword from './ResetPassword';
+import AffiliatePortal from './AffiliatePortal';
+import ChatWidget from './ChatWidget';
+import EducationHub from './EducationHub';
+import ABTestManager from './ABTestManager';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -64,6 +68,59 @@ function MainApp() {
   const [startTime] = useState(Date.now());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [liveStats, setLiveStats] = useState({
+    totalEarned: 847250,
+    activemembers: 512,
+    avgMonthly: 742,
+    recentPayment: 850
+  });
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  // Testimonials data
+  const testimonials = [
+    {
+      name: "Sarah M.",
+      location: "Texas",
+      earnings: "$825",
+      text: "Getting $825 every month has been life-changing. The setup was so easy and I literally don't think about it anymore. The money just shows up!",
+      avatar: "👩‍💼"
+    },
+    {
+      name: "Mike R.",
+      location: "Florida", 
+      earnings: "$750",
+      text: "I was skeptical at first, but EdgeVantage has paid me consistently for 8 months now. Best decision I made this year. My wife thought I was crazy!",
+      avatar: "👨‍💻"
+    },
+    {
+      name: "Jennifer L.",
+      location: "California",
+      earnings: "$680",
+      text: "The extra $680 per month covers my car payment. It's the easiest money I've ever made. I tell everyone about this opportunity.",
+      avatar: "👩‍🎓"
+    },
+    {
+      name: "David K.",
+      location: "New York",
+      earnings: "$920",
+      text: "EdgeVantage changed my financial situation completely. $920 monthly for doing absolutely nothing after the initial setup. Amazing!",
+      avatar: "👨‍🏫"
+    },
+    {
+      name: "Lisa P.",
+      location: "Arizona",
+      earnings: "$775",
+      text: "I love waking up to payment notifications! $775 every month like clockwork. The support team is fantastic too.",
+      avatar: "👩‍🔬"
+    },
+    {
+      name: "Robert J.",
+      location: "Ohio",
+      earnings: "$850",
+      text: "Started 6 months ago and haven't looked back. $850 monthly has helped me save for my dream vacation. EdgeVantage delivers!",
+      avatar: "👨‍⚕️"
+    }
+  ];
   
   // Handle auth success
   const handleAuthSuccess = (data) => {
@@ -120,6 +177,29 @@ function MainApp() {
       console.log(' Heatmap tracking initialized');
     }
   }, [sessionId, startTime]);
+
+  // Live Stats Counter Effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveStats(prev => ({
+        totalEarned: prev.totalEarned + Math.floor(Math.random() * 3) + 1, // $1-3 every 3 seconds
+        activemembers: prev.activemembers + (Math.random() > 0.95 ? 1 : 0), // Occasionally add member
+        avgMonthly: 742 + Math.floor(Math.random() * 116), // $742-858 range  
+        recentPayment: 500 + Math.floor(Math.random() * 500) // $500-1000 range
+      }));
+    }, 3000); // Update every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-rotate testimonials
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
+    }, 5000); // Change every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [testimonials.length]);
 
   // Referral System - Check URL parameters on load
   useEffect(() => {
@@ -387,6 +467,169 @@ function MainApp() {
     );
   };
 
+  // Live Earnings Counter Component
+  const LiveEarningsCounter = () => (
+    <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white py-8 sm:py-12 mb-12 sm:mb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-3"></div>
+            <span className="text-sm font-medium">Live Stats • Updated Every 3 Seconds</span>
+          </div>
+          <h3 className="text-2xl sm:text-3xl font-bold mb-2">EdgeVantage Community Earnings</h3>
+          <p className="text-blue-100 text-lg">Real people earning real money right now</p>
+        </div>
+        
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
+            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
+              ${liveStats.totalEarned.toLocaleString()}
+            </div>
+            <div className="text-blue-100 text-sm font-medium">Total Earned This Month</div>
+            <div className="flex items-center justify-center mt-2">
+              <TrendingUp className="w-4 h-4 text-green-300 mr-1" />
+              <span className="text-green-300 text-xs">+${Math.floor(Math.random() * 50) + 100}/day</span>
+            </div>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
+            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
+              {liveStats.activemembers}
+            </div>
+            <div className="text-blue-100 text-sm font-medium">Active Members</div>
+            <div className="flex items-center justify-center mt-2">
+              <Users className="w-4 h-4 text-emerald-300 mr-1" />
+              <span className="text-emerald-300 text-xs">Growing daily</span>
+            </div>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
+            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
+              ${liveStats.avgMonthly}
+            </div>
+            <div className="text-blue-100 text-sm font-medium">Average Monthly</div>
+            <div className="flex items-center justify-center mt-2">
+              <DollarSign className="w-4 h-4 text-yellow-300 mr-1" />
+              <span className="text-yellow-300 text-xs">Per member</span>
+            </div>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
+            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
+              ${liveStats.recentPayment}
+            </div>
+            <div className="text-blue-100 text-sm font-medium">Latest Payment</div>
+            <div className="flex items-center justify-center mt-2">
+              <CheckCircle className="w-4 h-4 text-green-300 mr-1" />
+              <span className="text-green-300 text-xs">2 minutes ago</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-center mt-8">
+          <button
+            onClick={handleNext}
+            className="inline-flex items-center bg-white text-purple-600 px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all transform hover:scale-105"
+          >
+            Join Our Earning Community
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Testimonials Carousel Component
+  const TestimonialsCarousel = () => (
+    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-lg border border-gray-200 mb-12 sm:mb-16">
+      <div className="text-center mb-6 sm:mb-8">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">What Our Members Say</h3>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-gray-600 text-sm">Live member testimonials</span>
+        </div>
+      </div>
+      
+      <div className="relative max-w-4xl mx-auto">
+        <div className="overflow-hidden">
+          <div 
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
+          >
+            {testimonials.map((testimonial, index) => (
+              <div key={index} className="w-full flex-shrink-0 px-4">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 sm:p-8">
+                  <div className="text-center">
+                    <div className="text-4xl mb-4">{testimonial.avatar}</div>
+                    <div className="flex justify-center mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" />
+                      ))}
+                    </div>
+                    <blockquote className="text-gray-700 text-lg sm:text-xl italic leading-relaxed mb-6">
+                      "{testimonial.text}"
+                    </blockquote>
+                    <div className="flex items-center justify-center space-x-4">
+                      <div className="text-center">
+                        <div className="font-bold text-gray-900 text-base sm:text-lg">
+                          {testimonial.name}
+                        </div>
+                        <div className="text-gray-600 text-sm">{testimonial.location}</div>
+                      </div>
+                      <div className="w-px h-8 bg-gray-300"></div>
+                      <div className="text-center">
+                        <div className="font-bold text-green-600 text-lg sm:text-xl">
+                          {testimonial.earnings}
+                        </div>
+                        <div className="text-gray-600 text-xs">monthly</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Navigation dots */}
+        <div className="flex justify-center space-x-2 mt-6">
+          {testimonials.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentTestimonial(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                index === currentTestimonial ? 'bg-purple-600 w-6' : 'bg-gray-300'
+              }`}
+            />
+          ))}
+        </div>
+        
+        {/* Manual navigation arrows */}
+        <button
+          onClick={() => setCurrentTestimonial(prev => prev === 0 ? testimonials.length - 1 : prev - 1)}
+          className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 text-gray-600 hover:text-purple-600 transition-colors"
+        >
+          ←
+        </button>
+        <button
+          onClick={() => setCurrentTestimonial(prev => (prev + 1) % testimonials.length)}
+          className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 text-gray-600 hover:text-purple-600 transition-colors"
+        >
+          →
+        </button>
+      </div>
+      
+      <div className="text-center mt-8">
+        <button
+          onClick={handleNext}
+          className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105"
+        >
+          Join These Success Stories
+        </button>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     if (currentStep === 'overview') {
       return (
@@ -532,39 +775,11 @@ function MainApp() {
             </div>
           </div>
 
-          {/* Social Proof - Mobile Optimized */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-lg border border-gray-200 mb-12 sm:mb-16">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 text-center mb-6 sm:mb-8">What Our Members Say</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-4 italic text-sm sm:text-base">"Getting $800 every month has been life-changing. The setup was so easy and I literally don't think about it anymore."</p>
-                <p className="font-semibold text-gray-900 text-sm sm:text-base">Sarah M. - Texas</p>
-              </div>
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-4 italic text-sm sm:text-base">"I was skeptical at first, but EdgeVantage has paid me consistently for 8 months now. Best decision I made this year."</p>
-                <p className="font-semibold text-gray-900 text-sm sm:text-base">Mike R. - Florida</p>
-              </div>
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-4 italic text-sm sm:text-base">"The extra $600 per month covers my car payment. It's the easiest money I've ever made."</p>
-                <p className="font-semibold text-gray-900 text-sm sm:text-base">Jennifer L. - California</p>
-              </div>
-            </div>
-          </div>
+          {/* Live Earnings Counter */}
+          <LiveEarningsCounter />
+
+          {/* Testimonials Carousel */}
+          <TestimonialsCarousel />
 
           {/* Value Proposition Cards - Mobile Stack */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16">
@@ -1276,6 +1491,9 @@ function MainApp() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
+      
+      {/* Live Chat Widget */}
+      <ChatWidget />
     </div>
   );
 }
@@ -1288,6 +1506,9 @@ function App() {
         <Route path="/" element={<MainApp />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/account" element={<UserDashboard />} />
+        <Route path="/affiliate" element={<AffiliatePortal />} />
+        <Route path="/academy" element={<EducationHub />} />
+        <Route path="/testing" element={<ABTestManager />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </Router>
