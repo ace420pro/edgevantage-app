@@ -68,12 +68,7 @@ function MainApp() {
   const [startTime] = useState(Date.now());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [liveStats, setLiveStats] = useState({
-    totalEarned: 847250,
-    activemembers: 512,
-    avgMonthly: 742,
-    recentPayment: 850
-  });
+  // Removed live stats feature per user request
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   // Testimonials data
@@ -178,19 +173,7 @@ function MainApp() {
     }
   }, [sessionId, startTime]);
 
-  // Live Stats Counter Effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveStats(prev => ({
-        totalEarned: prev.totalEarned + Math.floor(Math.random() * 3) + 1, // $1-3 every 3 seconds
-        activemembers: prev.activemembers + (Math.random() > 0.95 ? 1 : 0), // Occasionally add member
-        avgMonthly: 742 + Math.floor(Math.random() * 116), // $742-858 range  
-        recentPayment: 500 + Math.floor(Math.random() * 500) // $500-1000 range
-      }));
-    }, 3000); // Update every 3 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+  // Live stats feature removed per user request
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -467,77 +450,7 @@ function MainApp() {
     );
   };
 
-  // Live Earnings Counter Component
-  const LiveEarningsCounter = () => (
-    <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white py-8 sm:py-12 mb-12 sm:mb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-3"></div>
-            <span className="text-sm font-medium">Live Stats • Updated Every 3 Seconds</span>
-          </div>
-          <h3 className="text-2xl sm:text-3xl font-bold mb-2">Live Performance Stats</h3>
-          <p className="text-blue-100 text-lg">Real-time earnings and member activity</p>
-        </div>
-        
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
-            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
-              ${liveStats.totalEarned.toLocaleString()}
-            </div>
-            <div className="text-blue-100 text-sm font-medium">Total Earned This Month</div>
-            <div className="flex items-center justify-center mt-2">
-              <TrendingUp className="w-4 h-4 text-green-300 mr-1" />
-              <span className="text-green-300 text-xs">+${Math.floor(Math.random() * 50) + 100}/day</span>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
-            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
-              {liveStats.activemembers}
-            </div>
-            <div className="text-blue-100 text-sm font-medium">Active Members</div>
-            <div className="flex items-center justify-center mt-2">
-              <Users className="w-4 h-4 text-emerald-300 mr-1" />
-              <span className="text-emerald-300 text-xs">Growing daily</span>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
-            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
-              ${liveStats.avgMonthly}
-            </div>
-            <div className="text-blue-100 text-sm font-medium">Average Monthly</div>
-            <div className="flex items-center justify-center mt-2">
-              <DollarSign className="w-4 h-4 text-yellow-300 mr-1" />
-              <span className="text-yellow-300 text-xs">Per member</span>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/20">
-            <div className="text-3xl sm:text-4xl font-bold mb-2 tabular-nums">
-              ${liveStats.recentPayment}
-            </div>
-            <div className="text-blue-100 text-sm font-medium">Latest Payment</div>
-            <div className="flex items-center justify-center mt-2">
-              <CheckCircle className="w-4 h-4 text-green-300 mr-1" />
-              <span className="text-green-300 text-xs">2 minutes ago</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="text-center mt-8">
-          <button
-            onClick={handleNext}
-            className="inline-flex items-center bg-white text-purple-600 px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all transform hover:scale-105"
-          >
-            Join Our Earning Community
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  // Live Earnings Counter Component removed per user request
 
   // Testimonials Carousel Component
   const TestimonialsCarousel = () => (
@@ -775,8 +688,7 @@ function MainApp() {
             </div>
           </div>
 
-          {/* Live Earnings Counter */}
-          <LiveEarningsCounter />
+          {/* Live Earnings Counter removed per user request */}
 
           {/* Testimonials Carousel */}
           <TestimonialsCarousel />
