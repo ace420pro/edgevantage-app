@@ -476,8 +476,8 @@ function MainApp() {
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-3"></div>
             <span className="text-sm font-medium">Live Stats • Updated Every 3 Seconds</span>
           </div>
-          <h3 className="text-2xl sm:text-3xl font-bold mb-2">EdgeVantage Community Earnings</h3>
-          <p className="text-blue-100 text-lg">Real people earning real money right now</p>
+          <h3 className="text-2xl sm:text-3xl font-bold mb-2">Live Performance Stats</h3>
+          <p className="text-blue-100 text-lg">Real-time earnings and member activity</p>
         </div>
         
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
