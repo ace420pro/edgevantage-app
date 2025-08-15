@@ -2,20 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ CRITICAL REMINDER - READ FIRST
-
-**THIS IS A LIVE PRODUCTION WEBSITE: https://edgevantagepro.com/**
-
-- This is NOT a development/testing environment
-- ALL changes go directly to LIVE production 
-- NEVER change API URLs to localhost:3000 or localhost:5000
-- NEVER modify code for local testing - it breaks the live site
-- ALL API calls must use relative paths (/api/endpoint) or production URLs
-- Test everything on the live site, not locally
-- The live website has real users and must remain functional at all times
-
-**ALWAYS remember: Every code change affects the live production website immediately.**
-
 ## Project Overview
 
 EdgeVantage is a lead management application for a passive income opportunity service. It consists of a React frontend and Express.js/MongoDB backend that handles application submissions, analytics tracking, and admin dashboard functionality.
