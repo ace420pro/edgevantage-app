@@ -368,15 +368,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
-});
+// Start server (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 API available at http://localhost:${PORT}/api`);
+  });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n⏹️  Shutting down gracefully...');
-  await mongoose.connection.close();
-  process.exit(0);
-});
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\n⏹️  Shutting down gracefully...');
+    await mongoose.connection.close();
+    process.exit(0);
+  });
+}
+
+// Export for Vercel serverless functions
+module.exports = app;
