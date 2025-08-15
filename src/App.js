@@ -262,7 +262,7 @@ function App() {
       
       try {
         // Submit to backend API
-        const response = await fetch('http://localhost:5000/api/leads', {
+        const response = await fetch('/api/leads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -360,8 +360,8 @@ function App() {
       try {
         // Fetch applications and stats in parallel
         const [applicationsResponse, statsResponse] = await Promise.all([
-          fetch('http://localhost:5000/api/leads?limit=20'),
-          fetch('http://localhost:5000/api/leads/stats')
+          fetch('/api/leads?limit=20'),
+          fetch('/api/leads/stats')
         ]);
 
         if (applicationsResponse.ok) {
