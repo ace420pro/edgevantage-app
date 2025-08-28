@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, ArrowRight, Phone, Mail, MapPin, Star, Clock, TrendingUp, AlertCircle, Loader2, X, User as UserIcon } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
-import UserDashboard from './UserDashboard';
-import AuthModal from './AuthModal';
+import UserDashboardEnhanced from './UserDashboardEnhanced';
+import AuthModalEnhanced from './AuthModalEnhanced';
 import ResetPassword from './ResetPassword';
 import AffiliatePortal from './AffiliatePortal';
 import ChatWidget from './ChatWidget';
 import EducationHub from './EducationHub';
 import ABTestManager from './ABTestManager';
+import FeatureBanner from './FeatureBanner';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -171,6 +172,17 @@ function MainApp() {
       // Simulate heatmap initialization
       console.log(' Heatmap tracking initialized');
     }
+
+    // Add event listener for feature banner
+    const handleOpenAuthModal = () => {
+      setShowAuthModal(true);
+    };
+
+    window.addEventListener('openAuthModal', handleOpenAuthModal);
+
+    return () => {
+      window.removeEventListener('openAuthModal', handleOpenAuthModal);
+    };
   }, [sessionId, startTime]);
 
   // Live stats feature removed per user request
@@ -1395,10 +1407,11 @@ function MainApp() {
 
   return (
     <div>
+      <FeatureBanner />
       {renderContent()}
       
       {/* Auth Modal - Always rendered */}
-      <AuthModal 
+      <AuthModalEnhanced 
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
@@ -1417,7 +1430,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainApp />} />
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/account" element={<UserDashboard />} />
+        <Route path="/account" element={<UserDashboardEnhanced />} />
         <Route path="/affiliate" element={<AffiliatePortal />} />
         <Route path="/academy" element={<EducationHub />} />
         <Route path="/testing" element={<ABTestManager />} />
