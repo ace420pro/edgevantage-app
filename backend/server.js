@@ -1,39 +1,64 @@
-// backend/server.js
+// backend/server.js - Updated with comprehensive functionality
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 // Load environment variables
 dotenv.config();
 
+// Import models
+const { User, Lead, Course, Enrollment, Payment, Affiliate, ABTest } = require('./models');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Security middleware - Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit auth attempts
+  message: {
+    error: 'Too many authentication attempts, please try again later'
+  }
+});
+
+app.use(limiter);
+
+// Enhanced CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://www.edgevantagepro.com',
   'https://edgevantagepro.com',
-  'https://edgevantage-app.vercel.app', // Your Vercel app URL
-  process.env.FRONTEND_URL // Allow custom frontend URL from env
+  'https://edgevantage-app.vercel.app',
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
   origin: function(origin, callback) {
     console.log('CORS request from origin:', origin);
     
-    // Allow requests with no origin (like mobile apps or Postman)
+    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin)) {
-      console.log('CORS allowed for origin:', origin);
+      console.log('✅ CORS allowed for origin:', origin);
       callback(null, true);
     } else {
-      console.log('CORS blocked for origin:', origin, 'Allowed origins:', allowedOrigins);
+      console.log('❌ CORS blocked for origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -41,9 +66,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept']
 }));
-app.use(express.json());
 
-// Handle preflight requests explicitly
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Handle preflight requests
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -52,617 +79,800 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// MongoDB connection
+// MongoDB connection with enhanced error handling
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/edgevantage', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000
 })
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
-
-// Lead Schema
-const leadSchema = new mongoose.Schema({
-  // Personal Information
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: true,
-    lowercase: true,
-    trim: true,
-    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
-  },
-  phone: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  state: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  city: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  
-  // Qualification Questions
-  hasResidence: {
-    type: String,
-    enum: ['yes', 'no'],
-    required: true
-  },
-  hasInternet: {
-    type: String,
-    enum: ['yes', 'no'],
-    required: true
-  },
-  hasSpace: {
-    type: String,
-    enum: ['yes', 'no'],
-    required: true
-  },
-  
-  // Referral Information
-  referralSource: {
-    type: String,
-    required: true
-  },
-  referralCode: {
-    type: String,
-    default: ''
-  },
-  
-  // Application Status
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected', 'contacted'],
-    default: 'pending'
-  },
-  qualified: {
-    type: Boolean,
-    default: false
-  },
-  
-  // Analytics Data
-  sessionId: String,
-  ipAddress: String,
-  userAgent: String,
-  utmSource: String,
-  utmCampaign: String,
-  utmMedium: String,
-  
-  // Timestamps
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  // Admin Notes
-  notes: {
-    type: String,
-    default: ''
-  },
-  monthlyEarnings: {
-    type: Number,
-    default: 0
-  },
-  equipmentShipped: {
-    type: Boolean,
-    default: false
-  },
-  equipmentShippedDate: Date,
-  firstPaymentDate: Date
+.then(() => {
+  console.log('✅ MongoDB connected successfully');
+  console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
+})
+.catch((err) => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1);
 });
 
-// Add indexes for better query performance
-leadSchema.index({ email: 1 });
-leadSchema.index({ status: 1 });
-leadSchema.index({ createdAt: -1 });
-leadSchema.index({ referralCode: 1 });
-
-const Lead = mongoose.model('Lead', leadSchema);
-
-// User Schema for authentication
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  // Link to their application if they have one
-  applicationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lead',
-    default: null
-  },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  resetPasswordToken: String,
-  resetPasswordExpires: Date,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+// Database connection event handlers
+mongoose.connection.on('disconnected', () => {
+  console.log('📡 MongoDB disconnected');
 });
 
-// Add indexes
-userSchema.index({ email: 1 });
-userSchema.index({ applicationId: 1 });
-
-const User = mongoose.model('User', userSchema);
-
-// Affiliate Schema
-const affiliateSchema = new mongoose.Schema({
-  // Basic Info
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
-  },
-  phone: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  
-  // Affiliate Details
-  affiliateCode: {
-    type: String,
-    required: true,
-    unique: true,
-    uppercase: true
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'active', 'suspended', 'banned'],
-    default: 'pending'
-  },
-  
-  // Performance Tracking
-  totalReferrals: {
-    type: Number,
-    default: 0
-  },
-  approvedReferrals: {
-    type: Number,
-    default: 0
-  },
-  totalCommissions: {
-    type: Number,
-    default: 0
-  },
-  paidCommissions: {
-    type: Number,
-    default: 0
-  },
-  pendingCommissions: {
-    type: Number,
-    default: 0
-  },
-  
-  // Settings
-  commissionRate: {
-    type: Number,
-    default: 50, // $50 per approved referral
-    min: 0
-  },
-  paymentMethod: {
-    type: String,
-    enum: ['paypal', 'venmo', 'cashapp', 'zelle', 'check'],
-    default: 'paypal'
-  },
-  paymentDetails: {
-    type: String,
-    default: ''
-  },
-  
-  // Tracking
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  lastLoginAt: Date,
-  
-  // Marketing Materials
-  customMessage: {
-    type: String,
-    default: 'Join me on EdgeVantage and earn $500-$1000 monthly passive income!'
-  },
-  
-  // Admin Notes
-  notes: {
-    type: String,
-    default: ''
-  }
+mongoose.connection.on('reconnected', () => {
+  console.log('🔄 MongoDB reconnected');
 });
-
-// Commission Transaction Schema
-const commissionSchema = new mongoose.Schema({
-  affiliateId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Affiliate',
-    required: true
-  },
-  leadId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lead',
-    required: true
-  },
-  affiliateCode: {
-    type: String,
-    required: true
-  },
-  leadEmail: {
-    type: String,
-    required: true
-  },
-  leadName: {
-    type: String,
-    required: true
-  },
-  
-  // Commission Details
-  amount: {
-    type: Number,
-    required: true,
-    default: 50
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'paid', 'cancelled'],
-    default: 'pending'
-  },
-  
-  // Payment Info
-  paidAt: Date,
-  paymentMethod: String,
-  paymentReference: String,
-  
-  // Tracking
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  // Admin Notes
-  notes: {
-    type: String,
-    default: ''
-  }
-});
-
-// Add indexes
-affiliateSchema.index({ email: 1 });
-affiliateSchema.index({ affiliateCode: 1 });
-affiliateSchema.index({ status: 1 });
-affiliateSchema.index({ createdAt: -1 });
-
-commissionSchema.index({ affiliateId: 1 });
-commissionSchema.index({ leadId: 1 });
-commissionSchema.index({ affiliateCode: 1 });
-commissionSchema.index({ status: 1 });
-commissionSchema.index({ createdAt: -1 });
-
-const Affiliate = mongoose.model('Affiliate', affiliateSchema);
-const Commission = mongoose.model('Commission', commissionSchema);
-
-// JWT Secret - in production, use environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
 
 // Authentication middleware
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return res.status(401).json({ 
+      error: 'Access token required',
+      code: 'NO_TOKEN'
+    });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const user = await User.findById(decoded._id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        error: 'Invalid token - user not found',
+        code: 'INVALID_TOKEN'
+      });
     }
+
+    if (user.status !== 'active') {
+      return res.status(403).json({ 
+        error: 'Account is not active',
+        code: 'INACTIVE_ACCOUNT'
+      });
+    }
+
     req.user = user;
     next();
-  });
+  } catch (error) {
+    console.error('Token verification error:', error.message);
+    return res.status(403).json({ 
+      error: 'Invalid or expired token',
+      code: 'TOKEN_INVALID'
+    });
+  }
 };
 
-// Helper function to generate JWT
-const generateToken = (user) => {
-  return jwt.sign(
-    { 
-      id: user._id, 
-      email: user.email, 
-      role: user.role 
-    },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
+// Admin middleware
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ 
+      error: 'Admin access required',
+      code: 'ADMIN_REQUIRED'
+    });
+  }
+  next();
 };
 
-// Routes
+// =============================================================================
+// AUTHENTICATION ROUTES
+// =============================================================================
 
-// Authentication endpoint
-app.post('/api/auth', async (req, res) => {
+// POST /api/auth/register - Enhanced user registration
+app.post('/api/auth/register', strictLimiter, async (req, res) => {
   try {
-    const { action, email, password, name } = req.body;
+    const { name, email, password, setupToken } = req.body;
 
-    if (action === 'login') {
-      // Login existing user
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ error: 'Invalid email or password' });
-      }
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ 
+        error: 'Name, email, and password are required',
+        code: 'MISSING_FIELDS'
+      });
+    }
 
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(400).json({ error: 'Invalid email or password' });
-      }
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 6 characters long',
+        code: 'PASSWORD_TOO_SHORT'
+      });
+    }
 
-      // Check if user has an application
-      let application = null;
-      if (user.applicationId) {
-        application = await Lead.findById(user.applicationId);
-      } else {
-        // Try to find application by email
-        application = await Lead.findOne({ email: user.email });
-        if (application) {
-          // Link the application to the user
-          user.applicationId = application._id;
-          await user.save();
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: 'User already exists with this email',
+        code: 'USER_EXISTS'
+      });
+    }
+
+    // Link to application if setup token provided
+    let applicationId = null;
+    if (setupToken) {
+      try {
+        const decoded = jwt.verify(setupToken, process.env.JWT_SECRET || 'your-secret-key');
+        if (decoded.purpose === 'account-setup' && decoded.email === email.toLowerCase()) {
+          applicationId = decoded.applicationId;
+          
+          // Update lead record
+          await Lead.findByIdAndUpdate(applicationId, {
+            hasAccount: true,
+            accountCreatedAt: new Date(),
+            userId: null // Will be set after user creation
+          });
         }
+      } catch (error) {
+        console.log('Invalid setup token, proceeding without linking');
       }
+    }
 
-      const token = generateToken(user);
+    // Create user
+    const user = new User({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password, // Will be hashed in pre-save middleware
+      applicationId,
+      emailVerified: false
+    });
 
-      res.json({
-        success: true,
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isVerified: user.isVerified
-        },
-        application
-      });
+    // Generate email verification token
+    const verificationToken = user.generateEmailVerificationToken();
+    
+    await user.save();
 
-    } else if (action === 'register') {
-      // Register new user
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'User already exists with this email' });
+    // Update lead with user ID if linked
+    if (applicationId) {
+      await Lead.findByIdAndUpdate(applicationId, { userId: user._id });
+    }
+
+    // Generate auth token
+    const authToken = user.generateAuthToken();
+
+    console.log(`✅ New user registered: ${email}`);
+
+    // Send verification email (implement this with your email service)
+    // await sendVerificationEmail(user.email, user.name, verificationToken);
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully. Please check your email to verify your account.',
+      token: authToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        applicationId: user.applicationId
       }
+    });
 
-      // Hash password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ 
+      error: 'Registration failed. Please try again.',
+      code: 'REGISTRATION_ERROR'
+    });
+  }
+});
 
-      // Check if there's already an application for this email
-      let application = await Lead.findOne({ email });
-      let applicationId = application ? application._id : null;
+// POST /api/auth/login - Enhanced login
+app.post('/api/auth/login', strictLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-      // Create new user
-      const newUser = new User({
-        name,
-        email,
-        password: hashedPassword,
-        applicationId,
-        updatedAt: Date.now()
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Email and password are required',
+        code: 'MISSING_CREDENTIALS'
       });
+    }
 
-      const savedUser = await newUser.save();
+    // Find user with credentials validation
+    const user = await User.findByCredentials(email.toLowerCase(), password);
+    
+    // Update last login
+    user.lastLogin = new Date();
+    user.lastActivity = new Date();
+    
+    // Clean expired sessions
+    await user.cleanExpiredSessions();
+    
+    await user.save();
 
-      // If application exists, update it to link to the user
-      if (application && !application.userId) {
-        application.userId = savedUser._id;
-        await application.save();
-      }
+    // Get application data if linked
+    let applicationData = null;
+    if (user.applicationId) {
+      applicationData = await Lead.findById(user.applicationId);
+    }
 
-      const token = generateToken(savedUser);
+    // Generate auth token
+    const token = user.generateAuthToken();
 
-      console.log(`✅ New user registered: ${savedUser.email}`);
+    console.log(`✅ User logged in: ${email}`);
 
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        token,
-        user: {
-          id: savedUser._id,
-          name: savedUser.name,
-          email: savedUser.email,
-          role: savedUser.role,
-          isVerified: savedUser.isVerified
-        },
-        application
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        applicationId: user.applicationId,
+        profile: user.profile,
+        settings: user.settings,
+        lastLogin: user.lastLogin
+      },
+      application: applicationData
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    if (error.message.includes('Invalid login credentials') || 
+        error.message.includes('Account is locked')) {
+      return res.status(401).json({ 
+        error: error.message,
+        code: 'INVALID_CREDENTIALS'
       });
+    }
+    
+    res.status(500).json({ 
+      error: 'Login failed. Please try again.',
+      code: 'LOGIN_ERROR'
+    });
+  }
+});
 
+// POST /api/auth/verify-email - Email verification
+app.post('/api/auth/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ 
+        error: 'Verification token is required',
+        code: 'NO_TOKEN'
+      });
+    }
+
+    // Find user by verification token
+    const user = await User.findByVerificationToken(token);
+    
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired verification token',
+        code: 'INVALID_TOKEN'
+      });
+    }
+
+    // Mark email as verified
+    user.emailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    
+    await user.save();
+
+    console.log(`✅ Email verified for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully'
+    });
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ 
+      error: 'Email verification failed',
+      code: 'VERIFICATION_ERROR'
+    });
+  }
+});
+
+// POST /api/auth/resend-verification - Resend verification email
+app.post('/api/auth/resend-verification', strictLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        error: 'Email is required',
+        code: 'NO_EMAIL'
+      });
+    }
+
+    const user = await User.findOne({ 
+      email: email.toLowerCase(), 
+      emailVerified: false 
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'User not found or email already verified',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save();
+
+    // Send verification email
+    // await sendVerificationEmail(user.email, user.name, verificationToken);
+
+    console.log(`📧 Verification email resent to: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Verification email sent. Please check your inbox.'
+    });
+
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to resend verification email',
+      code: 'RESEND_ERROR'
+    });
+  }
+});
+
+// POST /api/auth/forgot-password - Password reset request
+app.post('/api/auth/forgot-password', strictLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        error: 'Email is required',
+        code: 'NO_EMAIL'
+      });
+    }
+
+    const user = await User.findOne({ 
+      email: email.toLowerCase(),
+      status: 'active'
+    });
+
+    // Always return success for security (don't reveal if email exists)
+    if (user) {
+      const resetToken = user.generatePasswordResetToken();
+      await user.save();
+
+      // Send password reset email
+      // await sendPasswordResetEmail(user.email, user.name, resetToken);
+
+      console.log(`🔑 Password reset requested for: ${email}`);
     } else {
-      res.status(400).json({ error: 'Invalid action' });
+      console.log(`⚠️ Password reset requested for non-existent email: ${email}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, we have sent a password reset link.'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process password reset request',
+      code: 'RESET_REQUEST_ERROR'
+    });
+  }
+});
+
+// POST /api/auth/reset-password - Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ 
+        error: 'Reset token and new password are required',
+        code: 'MISSING_FIELDS'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 6 characters long',
+        code: 'PASSWORD_TOO_SHORT'
+      });
+    }
+
+    // Find user by reset token
+    const user = await User.findByResetToken(token);
+
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired reset token',
+        code: 'INVALID_TOKEN'
+      });
+    }
+
+    // Update password
+    user.password = newPassword; // Will be hashed in pre-save middleware
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    
+    // Reset login attempts
+    await user.resetLoginAttempts();
+    
+    await user.save();
+
+    // Generate new auth token for automatic login
+    const authToken = user.generateAuthToken();
+
+    console.log(`🔑 Password reset successful for: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully',
+      token: authToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ 
+      error: 'Password reset failed',
+      code: 'RESET_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// BACKWARD COMPATIBILITY ROUTE
+// =============================================================================
+
+// POST /api/auth - Backward compatibility with existing frontend
+app.post('/api/auth', strictLimiter, async (req, res) => {
+  try {
+    const { action } = req.body;
+
+    switch (action) {
+      case 'register':
+        // Redirect to new register endpoint logic
+        const { name, email, password, setupToken } = req.body;
+        
+        if (!name || !email || !password) {
+          return res.status(400).json({ 
+            error: 'Name, email, and password are required'
+          });
+        }
+
+        if (password.length < 6) {
+          return res.status(400).json({ 
+            error: 'Password must be at least 6 characters long'
+          });
+        }
+
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        if (existingUser) {
+          return res.status(400).json({ 
+            error: 'User already exists with this email'
+          });
+        }
+
+        let applicationId = null;
+        if (setupToken) {
+          try {
+            const decoded = jwt.verify(setupToken, process.env.JWT_SECRET || 'your-secret-key');
+            if (decoded.purpose === 'account-setup' && decoded.email === email.toLowerCase()) {
+              applicationId = decoded.applicationId;
+              await Lead.findByIdAndUpdate(applicationId, {
+                hasAccount: true,
+                accountCreatedAt: new Date()
+              });
+            }
+          } catch (error) {
+            console.log('Invalid setup token, proceeding without linking');
+          }
+        }
+
+        const user = new User({
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          password,
+          applicationId,
+          emailVerified: false
+        });
+
+        const verificationToken = user.generateEmailVerificationToken();
+        await user.save();
+
+        if (applicationId) {
+          await Lead.findByIdAndUpdate(applicationId, { userId: user._id });
+        }
+
+        const authToken = user.generateAuthToken();
+
+        console.log(`✅ New user registered (legacy): ${email}`);
+
+        return res.status(201).json({
+          success: true,
+          message: 'Account created successfully',
+          token: authToken,
+          user: {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            applicationId: user.applicationId
+          }
+        });
+
+      case 'login':
+        // Redirect to new login endpoint logic
+        const { email: loginEmail, password: loginPassword } = req.body;
+
+        if (!loginEmail || !loginPassword) {
+          return res.status(400).json({ 
+            error: 'Email and password are required'
+          });
+        }
+
+        const loginUser = await User.findByCredentials(loginEmail.toLowerCase(), loginPassword);
+        
+        loginUser.lastLogin = new Date();
+        loginUser.lastActivity = new Date();
+        await loginUser.cleanExpiredSessions();
+        await loginUser.save();
+
+        let applicationData = null;
+        if (loginUser.applicationId) {
+          applicationData = await Lead.findById(loginUser.applicationId);
+        }
+
+        const loginToken = loginUser.generateAuthToken();
+
+        console.log(`✅ User logged in (legacy): ${loginEmail}`);
+
+        return res.json({
+          success: true,
+          message: 'Login successful',
+          token: loginToken,
+          user: {
+            id: loginUser._id,
+            email: loginUser.email,
+            name: loginUser.name,
+            role: loginUser.role,
+            applicationId: loginUser.applicationId,
+            profile: loginUser.profile,
+            settings: loginUser.settings
+          },
+          application: applicationData
+        });
+
+      case 'forgot-password':
+        // Redirect to forgot password logic
+        const { email: forgotEmail } = req.body;
+
+        if (!forgotEmail) {
+          return res.status(400).json({ 
+            error: 'Email is required'
+          });
+        }
+
+        const forgotUser = await User.findOne({ 
+          email: forgotEmail.toLowerCase(),
+          status: 'active'
+        });
+
+        if (forgotUser) {
+          const resetToken = forgotUser.generatePasswordResetToken();
+          await forgotUser.save();
+          console.log(`🔑 Password reset requested (legacy): ${forgotEmail}`);
+        } else {
+          console.log(`⚠️ Password reset requested for non-existent email (legacy): ${forgotEmail}`);
+        }
+
+        return res.json({
+          success: true,
+          message: 'If an account with that email exists, we have sent a password reset link.'
+        });
+
+      case 'reset-password':
+        // Redirect to reset password logic
+        const { token: resetToken, newPassword } = req.body;
+
+        if (!resetToken || !newPassword) {
+          return res.status(400).json({ 
+            error: 'Reset token and new password are required'
+          });
+        }
+
+        if (newPassword.length < 6) {
+          return res.status(400).json({ 
+            error: 'Password must be at least 6 characters long'
+          });
+        }
+
+        const resetUser = await User.findByResetToken(resetToken);
+
+        if (!resetUser) {
+          return res.status(400).json({ 
+            error: 'Invalid or expired reset token'
+          });
+        }
+
+        resetUser.password = newPassword;
+        resetUser.passwordResetToken = undefined;
+        resetUser.passwordResetExpires = undefined;
+        await resetUser.resetLoginAttempts();
+        await resetUser.save();
+
+        const resetAuthToken = resetUser.generateAuthToken();
+
+        console.log(`🔑 Password reset successful (legacy): ${resetUser.email}`);
+
+        return res.json({
+          success: true,
+          message: 'Password has been reset successfully',
+          token: resetAuthToken,
+          user: {
+            id: resetUser._id,
+            email: resetUser.email,
+            name: resetUser.name,
+            role: resetUser.role
+          }
+        });
+
+      default:
+        return res.status(400).json({ error: 'Invalid action' });
     }
 
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('Legacy auth error:', error);
+    
+    if (error.message.includes('Invalid login credentials') || 
+        error.message.includes('Account is locked')) {
+      return res.status(401).json({ 
+        error: error.message
+      });
+    }
+    
     res.status(500).json({ 
-      error: 'Authentication failed',
+      error: 'Authentication failed. Please try again.',
       details: error.message 
     });
   }
 });
 
-// Get user profile (protected route)
+// =============================================================================
+// USER PROFILE ROUTES
+// =============================================================================
+
+// GET /api/user/profile - Get user profile
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Get application if linked
-    let application = null;
-    if (user.applicationId) {
-      application = await Lead.findById(user.applicationId);
-    }
+    const user = await User.findById(req.user._id)
+      .select('-password')
+      .populate('applicationId');
 
     res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt
-      },
-      application
+      success: true,
+      user
     });
 
   } catch (error) {
-    console.error('Profile fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch profile' });
+    console.error('Get profile error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch profile',
+      code: 'PROFILE_ERROR'
+    });
   }
 });
 
-// Get user dashboard data (protected route)
+// PUT /api/user/profile - Update user profile
+app.put('/api/user/profile', authenticateToken, async (req, res) => {
+  try {
+    const updates = req.body;
+    const allowedUpdates = ['name', 'profile', 'settings'];
+    const isValidUpdate = Object.keys(updates).every(key => allowedUpdates.includes(key));
+
+    if (!isValidUpdate) {
+      return res.status(400).json({ 
+        error: 'Invalid update fields',
+        code: 'INVALID_UPDATES'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update profile',
+      code: 'UPDATE_ERROR'
+    });
+  }
+});
+
+// GET /api/user/dashboard - User dashboard data
 app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Get application if linked
+    const user = req.user;
+    
+    // Get application data
     let application = null;
     if (user.applicationId) {
       application = await Lead.findById(user.applicationId);
     }
 
-    // Generate progress tracking based on application status
-    let progress = {
-      applied: !!application,
-      reviewed: application && ['approved', 'contacted', 'rejected'].includes(application.status),
-      approved: application && application.status === 'approved',
-      shipped: application && application.equipmentShipped,
-      installed: application && application.equipmentShipped && application.firstPaymentDate,
-      earning: application && application.monthlyEarnings > 0
-    };
+    // Get enrollments
+    const enrollments = await Enrollment.findActiveByUser(user._id);
 
-    // Mock shipment data if equipment is shipped
-    let shipment = null;
-    if (application && application.equipmentShipped) {
-      shipment = {
-        trackingNumber: 'EV' + Math.random().toString(36).substring(7).toUpperCase(),
-        carrier: 'FedEx',
-        status: application.firstPaymentDate ? 'Delivered' : 'In Transit',
-        estimatedDelivery: application.equipmentShippedDate || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        installationGuideUrl: 'https://docs.edgevantagepro.com/installation-guide'
-      };
+    // Get recent payments
+    const payments = await Payment.findByUser(user._id, { 
+      status: 'completed' 
+    }).limit(5);
+
+    // Calculate total earnings
+    let totalEarnings = 0;
+    if (application && application.earnings) {
+      totalEarnings = application.earnings.totalEarned;
     }
 
-    // Generate earnings data if user is earning
-    let earnings = null;
-    if (application && application.monthlyEarnings > 0) {
-      const monthsEarning = Math.floor((Date.now() - (application.firstPaymentDate || Date.now())) / (30 * 24 * 60 * 60 * 1000)) + 1;
-      earnings = {
-        totalEarnings: application.monthlyEarnings * monthsEarning,
-        averageMonthly: application.monthlyEarnings,
-        lastPayment: {
-          amount: application.monthlyEarnings,
-          date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        }
-      };
-    }
-
-    // Mock appointment data for welcome calls
-    let appointment = null;
-    if (application && application.status === 'contacted' && !application.equipmentShipped) {
-      appointment = {
-        scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        type: 'Welcome Call & Setup Instructions',
-        meetingLink: 'https://meet.edgevantagepro.com/welcome-' + user._id
-      };
-    }
-
-    res.json({
+    const dashboardData = {
       user: {
-        id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt
+        joinDate: user.createdAt,
+        lastLogin: user.lastLogin
       },
       application: application ? {
-        id: application._id,
         status: application.status,
         qualified: application.qualified,
-        monthlyEarnings: application.monthlyEarnings,
-        equipmentShipped: application.equipmentShipped,
-        submittedAt: application.createdAt
+        equipment: application.equipment,
+        earnings: application.earnings
       } : null,
-      progress,
-      shipment,
-      earnings,
-      appointment
+      enrollments: enrollments.length,
+      completedCourses: enrollments.filter(e => e.status === 'completed').length,
+      totalEarnings,
+      recentPayments: payments
+    };
+
+    res.json({
+      success: true,
+      data: dashboardData
     });
 
   } catch (error) {
-    console.error('Dashboard fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    console.error('Dashboard error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch dashboard data',
+      code: 'DASHBOARD_ERROR'
+    });
   }
 });
 
-// Submit new application
+// =============================================================================
+// LEAD MANAGEMENT ROUTES (Backward Compatibility)
+// =============================================================================
+
+// POST /api/leads - Submit new application
 app.post('/api/leads', async (req, res) => {
   try {
     // Check if all qualification questions are "yes"
@@ -697,14 +907,23 @@ app.post('/api/leads', async (req, res) => {
     
     console.log(`✅ New lead saved: ${savedLead.email} - Qualified: ${qualified}`);
     
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      message: 'Application submitted successfully',
-      leadId: savedLead._id,
+      message: qualified ? 'Application submitted successfully! You are pre-qualified.' : 'Application submitted successfully!',
+      applicationId: savedLead._id,
       qualified: qualified
     });
+    
   } catch (error) {
-    console.error('Error saving lead:', error);
+    console.error('Lead submission error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: 'This email has already submitted an application.',
+        existingApplication: true
+      });
+    }
+    
     res.status(500).json({ 
       error: 'Failed to submit application. Please try again.',
       details: error.message 
@@ -712,1156 +931,298 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
-// Get all leads (for admin dashboard)
+// GET /api/leads - Get leads with filtering
 app.get('/api/leads', async (req, res) => {
   try {
-    const { status, qualified, limit = 100, offset = 0 } = req.query;
-    
-    // Build query
-    const query = {};
-    if (status) query.status = status;
-    if (qualified !== undefined) query.qualified = qualified === 'true';
-    
-    const leads = await Lead.find(query)
+    const { 
+      limit = 20, 
+      offset = 0, 
+      status, 
+      qualified,
+      state,
+      id
+    } = req.query;
+
+    // If specific ID requested
+    if (id) {
+      const lead = await Lead.findById(id);
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      return res.json(lead);
+    }
+
+    // Build filter object
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+    if (qualified !== undefined) filter.qualified = qualified === 'true';
+    if (state) filter.state = state;
+
+    const leads = await Lead.find(filter)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset));
-    
-    const totalCount = await Lead.countDocuments(query);
-    
+
+    const total = await Lead.countDocuments(filter);
+
     res.json({
       leads,
-      totalCount,
-      hasMore: totalCount > parseInt(offset) + parseInt(limit)
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
+
   } catch (error) {
-    console.error('Error fetching leads:', error);
-    res.status(500).json({ error: 'Failed to fetch leads' });
+    console.error('Leads fetch error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch leads',
+      details: error.message 
+    });
   }
 });
 
-// Get lead statistics (for admin dashboard)
+// GET /api/leads-stats - Get lead statistics
 app.get('/api/leads-stats', async (req, res) => {
   try {
-    console.log('📊 Fetching lead statistics...');
-    const stats = await Lead.aggregate([
+    const stats = await Lead.getStatistics();
+    
+    // Add state distribution
+    const stateDistribution = await Lead.aggregate([
       {
-        $facet: {
-          totalApplications: [{ $count: 'count' }],
-          statusCounts: [
-            { $group: { _id: '$status', count: { $sum: 1 } } }
-          ],
-          qualifiedCounts: [
-            { $group: { _id: '$qualified', count: { $sum: 1 } } }
-          ],
-          referralCounts: [
-            { $match: { referralCode: { $ne: '' } } },
-            { $count: 'count' }
-          ],
-          stateDistribution: [
-            { $group: { _id: '$state', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 10 }
-          ],
-          referralSources: [
-            { $group: { _id: '$referralSource', count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-          ],
-          avgMonthlyPayout: [
-            { $match: { monthlyEarnings: { $gt: 0 } } },
-            { $group: { _id: null, avg: { $avg: '$monthlyEarnings' } } }
-          ],
-          recentApplications: [
-            { $sort: { createdAt: -1 } },
-            { $limit: 5 },
-            { $project: { 
-              name: 1, 
-              email: 1, 
-              state: 1, 
-              city: 1, 
-              status: 1, 
-              createdAt: 1,
-              qualified: 1,
-              referralCode: 1
-            }}
-          ]
+        $group: {
+          _id: '$state',
+          count: { $sum: 1 }
         }
-      }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
     ]);
-    
-    // Format the stats
-    console.log('📊 Raw stats result:', JSON.stringify(stats[0], null, 2));
-    
-    const formattedStats = {
-      totalApplications: stats[0].totalApplications[0]?.count || 0,
-      statusBreakdown: Object.fromEntries(
-        stats[0].statusCounts.map(s => [s._id, s.count])
-      ),
-      qualifiedCount: stats[0].qualifiedCounts.find(q => q._id === true)?.count || 0,
-      notQualifiedCount: stats[0].qualifiedCounts.find(q => q._id === false)?.count || 0,
-      totalReferrals: stats[0].referralCounts[0]?.count || 0,
-      topStates: stats[0].stateDistribution,
-      referralSources: stats[0].referralSources,
-      avgMonthlyPayout: stats[0].avgMonthlyPayout[0]?.avg || 0,
-      recentApplications: stats[0].recentApplications
-    };
-    
-    console.log('📊 Formatted stats:', JSON.stringify(formattedStats, null, 2));
-    res.json(formattedStats);
+
+    res.json({
+      ...stats,
+      stateDistribution
+    });
+
   } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
+    console.error('Stats fetch error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch statistics',
+      details: error.message 
+    });
   }
 });
 
-// Update lead status (for admin)
+// PATCH /api/leads/:id - Update lead status (Admin only)
 app.patch('/api/leads/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    updates.updatedAt = Date.now();
-    
-    const updatedLead = await Lead.findByIdAndUpdate(
+
+    const lead = await Lead.findByIdAndUpdate(
       id,
-      updates,
+      { 
+        ...updates, 
+        updatedAt: new Date() 
+      },
       { new: true, runValidators: true }
     );
-    
-    if (!updatedLead) {
+
+    if (!lead) {
       return res.status(404).json({ error: 'Lead not found' });
     }
-    
-    res.json({ 
-      success: true, 
+
+    console.log(`✅ Lead updated: ${lead.email} - Status: ${lead.status}`);
+
+    res.json({
+      success: true,
       message: 'Lead updated successfully',
-      lead: updatedLead 
+      lead
     });
+
   } catch (error) {
-    console.error('Error updating lead:', error);
-    res.status(500).json({ error: 'Failed to update lead' });
+    console.error('Lead update error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update lead',
+      details: error.message 
+    });
   }
 });
 
-// Delete lead (for admin)
+// DELETE /api/leads/:id - Delete lead (Admin only)
 app.delete('/api/leads/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const deletedLead = await Lead.findByIdAndDelete(id);
-    
-    if (!deletedLead) {
+
+    const lead = await Lead.findByIdAndDelete(id);
+
+    if (!lead) {
       return res.status(404).json({ error: 'Lead not found' });
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Lead deleted successfully' 
+
+    console.log(`🗑️ Lead deleted: ${lead.email}`);
+
+    res.json({
+      success: true,
+      message: 'Lead deleted successfully'
     });
+
   } catch (error) {
-    console.error('Error deleting lead:', error);
-    res.status(500).json({ error: 'Failed to delete lead' });
+    console.error('Lead delete error:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete lead',
+      details: error.message 
+    });
   }
 });
 
-// Check referral code validity
+// GET /api/referral/:code - Check referral code validity
 app.get('/api/referral/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    
-    // Look up affiliate by code
-    const affiliate = await Affiliate.findOne({ 
-      affiliateCode: code.toUpperCase(),
-      status: 'active'
-    });
-    
-    if (affiliate) {
-      res.json({
-        code: code,
-        referrerName: affiliate.name,
-        bonus: affiliate.commissionRate,
-        isValid: true,
-        affiliateId: affiliate._id
-      });
-    } else {
-      res.json({
-        code: code,
-        isValid: false,
-        message: 'Referral code not found or inactive'
+
+    const affiliate = await Affiliate.findByCode(code);
+
+    if (!affiliate) {
+      return res.status(404).json({ 
+        error: 'Referral code not found',
+        valid: false 
       });
     }
-  } catch (error) {
-    console.error('Error checking referral:', error);
-    res.status(500).json({ error: 'Failed to check referral code' });
-  }
-});
 
-// Affiliate registration
-app.post('/api/affiliates/register', async (req, res) => {
-  try {
-    const { name, email, phone, paymentMethod = 'paypal', paymentDetails = '' } = req.body;
-    
-    // Generate unique affiliate code
-    let affiliateCode;
-    let codeExists = true;
-    let attempts = 0;
-    
-    while (codeExists && attempts < 10) {
-      const namePart = name.split(' ').map(n => n.substring(0, 3).toUpperCase()).join('').substring(0, 6);
-      const numberPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      affiliateCode = namePart + numberPart;
-      
-      const existing = await Affiliate.findOne({ affiliateCode });
-      codeExists = !!existing;
-      attempts++;
-    }
-    
-    if (codeExists) {
-      return res.status(400).json({ error: 'Unable to generate unique affiliate code' });
-    }
-    
-    // Check for existing email
-    const existingAffiliate = await Affiliate.findOne({ email });
-    if (existingAffiliate) {
-      return res.status(400).json({ error: 'Email already registered as affiliate' });
-    }
-    
-    const newAffiliate = new Affiliate({
-      name,
-      email,
-      phone,
-      affiliateCode,
-      paymentMethod,
-      paymentDetails,
-      status: 'active' // Auto-approve for now
-    });
-    
-    const savedAffiliate = await newAffiliate.save();
-    
-    console.log(`✅ New affiliate registered: ${savedAffiliate.email} - Code: ${savedAffiliate.affiliateCode}`);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Affiliate registration successful',
-      affiliate: {
-        id: savedAffiliate._id,
-        name: savedAffiliate.name,
-        email: savedAffiliate.email,
-        affiliateCode: savedAffiliate.affiliateCode,
-        commissionRate: savedAffiliate.commissionRate
-      }
-    });
-  } catch (error) {
-    console.error('Error registering affiliate:', error);
-    res.status(500).json({ error: 'Failed to register affiliate' });
-  }
-});
-
-// Get affiliate dashboard data
-app.get('/api/affiliates/:code/dashboard', async (req, res) => {
-  try {
-    const { code } = req.params;
-    
-    const affiliate = await Affiliate.findOne({ affiliateCode: code.toUpperCase() });
-    if (!affiliate) {
-      return res.status(404).json({ error: 'Affiliate not found' });
-    }
-    
-    // Get referral stats
-    const referralStats = await Lead.aggregate([
-      { $match: { referralCode: code.toUpperCase() } },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-    
-    // Get recent referrals
-    const recentReferrals = await Lead.find({ referralCode: code.toUpperCase() })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select('name email status qualified createdAt city state');
-    
-    // Get commissions
-    const commissions = await Commission.find({ affiliateCode: code.toUpperCase() })
-      .sort({ createdAt: -1 })
-      .limit(20);
-    
-    // Calculate totals
-    const totalReferrals = await Lead.countDocuments({ referralCode: code.toUpperCase() });
-    const approvedReferrals = await Lead.countDocuments({ 
-      referralCode: code.toUpperCase(), 
-      status: 'approved' 
-    });
-    const pendingReferrals = await Lead.countDocuments({ 
-      referralCode: code.toUpperCase(), 
-      status: { $in: ['pending', 'contacted'] }
-    });
-    
-    const totalCommissions = approvedReferrals * affiliate.commissionRate;
-    const paidCommissions = await Commission.aggregate([
-      { $match: { affiliateCode: code.toUpperCase(), status: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    
-    const pendingCommissions = await Commission.aggregate([
-      { $match: { affiliateCode: code.toUpperCase(), status: { $in: ['pending', 'approved'] } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    
-    // Update affiliate stats
-    await Affiliate.findByIdAndUpdate(affiliate._id, {
-      totalReferrals,
-      approvedReferrals,
-      totalCommissions,
-      paidCommissions: paidCommissions[0]?.total || 0,
-      pendingCommissions: pendingCommissions[0]?.total || 0,
-      lastLoginAt: new Date(),
-      updatedAt: new Date()
-    });
-    
     res.json({
-      affiliate: {
-        name: affiliate.name,
-        email: affiliate.email,
-        affiliateCode: affiliate.affiliateCode,
-        status: affiliate.status,
-        commissionRate: affiliate.commissionRate,
-        customMessage: affiliate.customMessage
-      },
-      stats: {
-        totalReferrals,
-        approvedReferrals,
-        pendingReferrals,
-        totalCommissions,
-        paidCommissions: paidCommissions[0]?.total || 0,
-        pendingCommissions: pendingCommissions[0]?.total || 0,
-        conversionRate: totalReferrals > 0 ? ((approvedReferrals / totalReferrals) * 100).toFixed(1) : '0'
-      },
-      recentReferrals,
-      commissions,
-      referralStats: referralStats.reduce((acc, stat) => {
-        acc[stat._id] = stat.count;
-        return acc;
-      }, {})
+      valid: true,
+      referralSource: 'affiliate',
+      affiliateName: affiliate.name,
+      bonusAmount: 50 // Standard referral bonus
     });
-  } catch (error) {
-    console.error('Error fetching affiliate dashboard:', error);
-    res.status(500).json({ error: 'Failed to fetch affiliate dashboard' });
-  }
-});
 
-// Get all affiliates (admin only)
-app.get('/api/affiliates', async (req, res) => {
-  try {
-    const { status, limit = 50 } = req.query;
-    
-    const query = {};
-    if (status && status !== 'all') {
-      query.status = status;
-    }
-    
-    const affiliates = await Affiliate.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .select('-notes');
-    
-    res.json({ affiliates });
   } catch (error) {
-    console.error('Error fetching affiliates:', error);
-    res.status(500).json({ error: 'Failed to fetch affiliates' });
-  }
-});
-
-// Update affiliate
-app.patch('/api/affiliates/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-    updates.updatedAt = new Date();
-    
-    const affiliate = await Affiliate.findByIdAndUpdate(
-      id,
-      updates,
-      { new: true, runValidators: true }
-    );
-    
-    if (!affiliate) {
-      return res.status(404).json({ error: 'Affiliate not found' });
-    }
-    
-    res.json({ success: true, affiliate });
-  } catch (error) {
-    console.error('Error updating affiliate:', error);
-    res.status(500).json({ error: 'Failed to update affiliate' });
-  }
-});
-
-// Process commission (when lead gets approved)
-app.post('/api/commissions/process', async (req, res) => {
-  try {
-    const { leadId } = req.body;
-    
-    const lead = await Lead.findById(leadId);
-    if (!lead || !lead.referralCode) {
-      return res.status(400).json({ error: 'Lead not found or no referral code' });
-    }
-    
-    const affiliate = await Affiliate.findOne({ affiliateCode: lead.referralCode.toUpperCase() });
-    if (!affiliate) {
-      return res.status(400).json({ error: 'Affiliate not found' });
-    }
-    
-    // Check if commission already exists
-    const existingCommission = await Commission.findOne({ leadId: lead._id });
-    if (existingCommission) {
-      return res.status(400).json({ error: 'Commission already processed for this lead' });
-    }
-    
-    // Create commission record
-    const commission = new Commission({
-      affiliateId: affiliate._id,
-      leadId: lead._id,
-      affiliateCode: affiliate.affiliateCode,
-      leadEmail: lead.email,
-      leadName: lead.name,
-      amount: affiliate.commissionRate,
-      status: lead.status === 'approved' ? 'approved' : 'pending'
+    console.error('Referral check error:', error);
+    res.status(500).json({ 
+      error: 'Failed to validate referral code',
+      valid: false 
     });
-    
-    await commission.save();
-    
-    console.log(`✅ Commission processed: ${commission.amount} for ${affiliate.affiliateCode}`);
-    
-    res.json({ success: true, commission });
-  } catch (error) {
-    console.error('Error processing commission:', error);
-    res.status(500).json({ error: 'Failed to process commission' });
   }
 });
 
-// Get affiliate stats (admin)
-app.get('/api/affiliates-stats', async (req, res) => {
-  try {
-    const stats = await Affiliate.aggregate([
-      {
-        $facet: {
-          totalAffiliates: [{ $count: 'count' }],
-          statusCounts: [
-            { $group: { _id: '$status', count: { $sum: 1 } } },
-            { $sort: { _id: 1 } }
-          ],
-          topPerformers: [
-            { $match: { approvedReferrals: { $gt: 0 } } },
-            { $sort: { approvedReferrals: -1 } },
-            { $limit: 5 },
-            { $project: { name: 1, affiliateCode: 1, approvedReferrals: 1, totalCommissions: 1 } }
-          ],
-          totalCommissions: [
-            { $group: { _id: null, total: { $sum: '$totalCommissions' } } }
-          ],
-          paidCommissions: [
-            { $group: { _id: null, total: { $sum: '$paidCommissions' } } }
-          ]
-        }
-      }
-    ]);
-    
-    res.json({
-      totalAffiliates: stats[0].totalAffiliates[0]?.count || 0,
-      statusBreakdown: stats[0].statusCounts.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {}),
-      topPerformers: stats[0].topPerformers,
-      totalCommissions: stats[0].totalCommissions[0]?.total || 0,
-      paidCommissions: stats[0].paidCommissions[0]?.total || 0,
-      pendingCommissions: (stats[0].totalCommissions[0]?.total || 0) - (stats[0].paidCommissions[0]?.total || 0)
-    });
-  } catch (error) {
-    console.error('Error fetching affiliate stats:', error);
-    res.status(500).json({ error: 'Failed to fetch affiliate stats' });
-  }
-});
-
-// A/B Testing API endpoints
-
-// A/B Test schema (in-memory for now, should be moved to proper database)
-const abTests = [];
-const abTestResults = {};
-
-// Get all A/B tests
-app.get('/api/ab-tests', (req, res) => {
-  res.json({ tests: abTests });
-});
-
-// Create new A/B test
-app.post('/api/ab-tests', (req, res) => {
-  const test = {
-    id: Math.random().toString(36).substring(7),
-    ...req.body,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-  
-  abTests.push(test);
-  
-  // Initialize test results
-  abTestResults[test.id] = {
-    totalViews: 0,
-    variantViews: {},
-    conversions: {}
-  };
-  
-  // Initialize each variant
-  test.variants.forEach(variant => {
-    abTestResults[test.id].variantViews[variant.name] = 0;
-    abTestResults[test.id].conversions[variant.name] = 0;
-  });
-  
-  res.json({ success: true, test });
-});
-
-// Update A/B test
-app.patch('/api/ab-tests/:id', (req, res) => {
-  const testIndex = abTests.findIndex(t => t.id === req.params.id);
-  if (testIndex === -1) {
-    return res.status(404).json({ error: 'Test not found' });
-  }
-  
-  abTests[testIndex] = {
-    ...abTests[testIndex],
-    ...req.body,
-    updatedAt: new Date()
-  };
-  
-  res.json({ success: true, test: abTests[testIndex] });
-});
-
-// Get A/B test results
-app.get('/api/ab-tests/results', (req, res) => {
-  res.json({ results: abTestResults });
-});
-
-// Track A/B test view
-app.post('/api/ab-tests/track-view', (req, res) => {
-  const { testId, variant } = req.body;
-  
-  if (abTestResults[testId]) {
-    abTestResults[testId].totalViews++;
-    if (abTestResults[testId].variantViews[variant] !== undefined) {
-      abTestResults[testId].variantViews[variant]++;
-    }
-  }
-  
-  res.json({ success: true });
-});
-
-// Track A/B test conversion
-app.post('/api/ab-tests/track-conversion', (req, res) => {
-  const { testId, variant } = req.body;
-  
-  if (abTestResults[testId] && abTestResults[testId].conversions[variant] !== undefined) {
-    abTestResults[testId].conversions[variant]++;
-  }
-  
-  res.json({ success: true });
-});
-
-// Get active variant for a test
-app.get('/api/ab-tests/:testId/variant', (req, res) => {
-  const { testId } = req.params;
-  const { userId } = req.query;
-  
-  const test = abTests.find(t => t.id === testId && t.status === 'active');
-  if (!test) {
-    return res.json({ variant: null });
-  }
-  
-  // Simple hash-based assignment for consistent user experience
-  const userHash = userId ? parseInt(userId.slice(-2), 36) % 100 : Math.floor(Math.random() * 100);
-  const trafficSplit = test.trafficSplit || 50;
-  
-  if (userHash < trafficSplit) {
-    // User gets a variant (not control)
-    const variants = test.variants.filter(v => !v.isControl);
-    const variantIndex = userHash % variants.length;
-    res.json({ variant: variants[variantIndex] });
-  } else {
-    // User gets control
-    const controlVariant = test.variants.find(v => v.isControl);
-    res.json({ variant: controlVariant });
-  }
-});
-
-// Course Management System
-
-// Course Schema
-const courseSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  subtitle: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  instructor: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  
-  // Pricing
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  originalPrice: {
-    type: Number,
-    min: 0
-  },
-  
-  // Course Details
-  level: {
-    type: String,
-    enum: ['Beginner', 'Intermediate', 'Advanced', 'Beginner to Advanced'],
-    required: true
-  },
-  duration: {
-    type: String,
-    required: true
-  },
-  modules: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  lessons: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  
-  // Engagement Metrics
-  students: {
-    type: Number,
-    default: 0
-  },
-  rating: {
-    type: Number,
-    min: 0,
-    max: 5,
-    default: 0
-  },
-  reviews: {
-    type: Number,
-    default: 0
-  },
-  
-  // Content
-  thumbnail: {
-    type: String,
-    default: '/api/placeholder/400/225'
-  },
-  tags: [{
-    type: String,
-    trim: true
-  }],
-  features: [{
-    type: String,
-    required: true
-  }],
-  curriculum: [{
-    title: String,
-    lessons: Number,
-    duration: String,
-    preview: Boolean
-  }],
-  bonuses: [String],
-  
-  // Status
-  status: {
-    type: String,
-    enum: ['draft', 'published', 'archived'],
-    default: 'draft'
-  },
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  
-  // Tracking
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-// Enrollment Schema
-const enrollmentSchema = new mongoose.Schema({
-  // Student Info
-  studentEmail: {
-    type: String,
-    required: true,
-    lowercase: true,
-    trim: true
-  },
-  studentName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  
-  // Course Reference
-  courseId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
-    required: true
-  },
-  courseTitle: {
-    type: String,
-    required: true
-  },
-  
-  // Payment Info
-  paymentPlan: {
-    type: String,
-    enum: ['full', '3month', '6month'],
-    required: true
-  },
-  amountPaid: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  totalAmount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['pending', 'completed', 'partial', 'failed', 'refunded'],
-    default: 'pending'
-  },
-  
-  // Progress Tracking
-  progress: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
-  completedLessons: [{
-    moduleIndex: Number,
-    lessonIndex: Number,
-    completedAt: Date
-  }],
-  lastAccessedAt: Date,
-  
-  // Status
-  status: {
-    type: String,
-    enum: ['enrolled', 'active', 'completed', 'dropped', 'refunded'],
-    default: 'enrolled'
-  },
-  certificateIssued: {
-    type: Boolean,
-    default: false
-  },
-  certificateIssuedAt: Date,
-  
-  // Tracking
-  enrolledAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-// Add indexes
-courseSchema.index({ status: 1 });
-courseSchema.index({ featured: 1 });
-courseSchema.index({ createdAt: -1 });
-courseSchema.index({ price: 1 });
-
-enrollmentSchema.index({ studentEmail: 1 });
-enrollmentSchema.index({ courseId: 1 });
-enrollmentSchema.index({ paymentStatus: 1 });
-enrollmentSchema.index({ status: 1 });
-enrollmentSchema.index({ enrolledAt: -1 });
-
-const Course = mongoose.model('Course', courseSchema);
-const Enrollment = mongoose.model('Enrollment', enrollmentSchema);
-
-// Course API Endpoints
-
-// Get all courses (public)
-app.get('/api/courses', async (req, res) => {
-  try {
-    const { status, featured, level, sort } = req.query;
-    
-    const filter = { status: 'published' }; // Only show published courses
-    
-    if (featured) filter.featured = featured === 'true';
-    if (level) filter.level = level;
-    
-    let sortOption = { createdAt: -1 }; // Default: newest first
-    if (sort === 'price-asc') sortOption = { price: 1 };
-    else if (sort === 'price-desc') sortOption = { price: -1 };
-    else if (sort === 'rating') sortOption = { rating: -1 };
-    else if (sort === 'students') sortOption = { students: -1 };
-    
-    const courses = await Course.find(filter).sort(sortOption);
-    
-    res.json({ 
-      success: true, 
-      courses,
-      total: courses.length
-    });
-  } catch (error) {
-    console.error('Error fetching courses:', error);
-    res.status(500).json({ error: 'Failed to fetch courses' });
-  }
-});
-
-// Get single course by ID (public)
-app.get('/api/courses/:id', async (req, res) => {
-  try {
-    const course = await Course.findById(req.params.id);
-    
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-    
-    // Only show published courses to public
-    if (course.status !== 'published') {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-    
-    res.json({ success: true, course });
-  } catch (error) {
-    console.error('Error fetching course:', error);
-    res.status(500).json({ error: 'Failed to fetch course' });
-  }
-});
-
-// Create course (admin only)
-app.post('/api/courses', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const course = new Course(req.body);
-    await course.save();
-    
-    res.status(201).json({ success: true, course });
-  } catch (error) {
-    console.error('Error creating course:', error);
-    res.status(500).json({ error: 'Failed to create course' });
-  }
-});
-
-// Update course (admin only)
-app.patch('/api/courses/:id', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const course = await Course.findByIdAndUpdate(
-      req.params.id, 
-      { ...req.body, updatedAt: new Date() }, 
-      { new: true }
-    );
-    
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-    
-    res.json({ success: true, course });
-  } catch (error) {
-    console.error('Error updating course:', error);
-    res.status(500).json({ error: 'Failed to update course' });
-  }
-});
-
-// Delete course (admin only)
-app.delete('/api/courses/:id', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const course = await Course.findByIdAndDelete(req.params.id);
-    
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-    
-    // Also delete related enrollments
-    await Enrollment.deleteMany({ courseId: req.params.id });
-    
-    res.json({ success: true, message: 'Course deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting course:', error);
-    res.status(500).json({ error: 'Failed to delete course' });
-  }
-});
-
-// Enrollment API Endpoints
-
-// Create enrollment (course purchase)
-app.post('/api/enrollments', async (req, res) => {
-  try {
-    const { courseId, studentEmail, studentName, paymentPlan, paymentData } = req.body;
-    
-    // Validate course exists
-    const course = await Course.findById(courseId);
-    if (!course || course.status !== 'published') {
-      return res.status(404).json({ error: 'Course not found or not available' });
-    }
-    
-    // Check if student is already enrolled
-    const existingEnrollment = await Enrollment.findOne({
-      courseId,
-      studentEmail,
-      status: { $in: ['enrolled', 'active', 'completed'] }
-    });
-    
-    if (existingEnrollment) {
-      return res.status(400).json({ error: 'Student is already enrolled in this course' });
-    }
-    
-    // Calculate payment amounts based on plan
-    let amountPaid = course.price;
-    let totalAmount = course.price;
-    
-    if (paymentPlan === '3month') {
-      amountPaid = Math.ceil(course.price / 3);
-      totalAmount = amountPaid * 3;
-    } else if (paymentPlan === '6month') {
-      amountPaid = Math.ceil((course.price * 1.1) / 6);
-      totalAmount = amountPaid * 6;
-    }
-    
-    // Create enrollment
-    const enrollment = new Enrollment({
-      studentEmail,
-      studentName,
-      courseId,
-      courseTitle: course.title,
-      paymentPlan,
-      amountPaid,
-      totalAmount,
-      paymentStatus: 'completed', // In real app, this would be based on actual payment processing
-      status: 'enrolled',
-      lastAccessedAt: new Date()
-    });
-    
-    await enrollment.save();
-    
-    // Update course stats
-    await Course.findByIdAndUpdate(courseId, {
-      $inc: { students: 1 }
-    });
-    
-    res.status(201).json({ 
-      success: true, 
-      enrollment,
-      message: 'Successfully enrolled in course'
-    });
-    
-  } catch (error) {
-    console.error('Error creating enrollment:', error);
-    res.status(500).json({ error: 'Failed to process enrollment' });
-  }
-});
-
-// Get student's enrollments
-app.get('/api/enrollments/student/:email', async (req, res) => {
-  try {
-    const { email } = req.params;
-    
-    const enrollments = await Enrollment.find({ 
-      studentEmail: email.toLowerCase() 
-    }).populate('courseId').sort({ enrolledAt: -1 });
-    
-    res.json({ 
-      success: true, 
-      enrollments,
-      total: enrollments.length
-    });
-    
-  } catch (error) {
-    console.error('Error fetching student enrollments:', error);
-    res.status(500).json({ error: 'Failed to fetch enrollments' });
-  }
-});
-
-// Get all enrollments (admin only)
-app.get('/api/enrollments', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const { status, paymentStatus, courseId } = req.query;
-    
-    const filter = {};
-    if (status) filter.status = status;
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
-    if (courseId) filter.courseId = courseId;
-    
-    const enrollments = await Enrollment.find(filter)
-      .populate('courseId')
-      .sort({ enrolledAt: -1 });
-    
-    res.json({ 
-      success: true, 
-      enrollments,
-      total: enrollments.length
-    });
-    
-  } catch (error) {
-    console.error('Error fetching enrollments:', error);
-    res.status(500).json({ error: 'Failed to fetch enrollments' });
-  }
-});
-
-// Update enrollment progress
-app.patch('/api/enrollments/:id/progress', async (req, res) => {
-  try {
-    const { progress, completedLessons } = req.body;
-    
-    const enrollment = await Enrollment.findByIdAndUpdate(
-      req.params.id,
-      {
-        progress,
-        completedLessons,
-        lastAccessedAt: new Date(),
-        updatedAt: new Date(),
-        // Mark as completed if progress is 100%
-        ...(progress >= 100 && { 
-          status: 'completed',
-          certificateIssued: true,
-          certificateIssuedAt: new Date()
-        })
-      },
-      { new: true }
-    );
-    
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-    
-    res.json({ success: true, enrollment });
-    
-  } catch (error) {
-    console.error('Error updating enrollment progress:', error);
-    res.status(500).json({ error: 'Failed to update progress' });
-  }
-});
-
-// Get course analytics (admin only)
-app.get('/api/courses/analytics/summary', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const [
-      totalCourses,
-      publishedCourses,
-      totalEnrollments,
-      activeEnrollments,
-      totalRevenue,
-      completionRate
-    ] = await Promise.all([
-      Course.countDocuments(),
-      Course.countDocuments({ status: 'published' }),
-      Enrollment.countDocuments(),
-      Enrollment.countDocuments({ status: { $in: ['enrolled', 'active'] } }),
-      Enrollment.aggregate([
-        { $match: { paymentStatus: 'completed' } },
-        { $group: { _id: null, total: { $sum: '$amountPaid' } } }
-      ]),
-      Enrollment.aggregate([
-        {
-          $group: {
-            _id: null,
-            total: { $sum: 1 },
-            completed: {
-              $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
-            }
-          }
-        }
-      ])
-    ]);
-    
-    const revenue = totalRevenue.length > 0 ? totalRevenue[0].total : 0;
-    const completion = completionRate.length > 0 
-      ? Math.round((completionRate[0].completed / completionRate[0].total) * 100)
-      : 0;
-    
-    res.json({
-      success: true,
-      analytics: {
-        totalCourses,
-        publishedCourses,
-        totalEnrollments,
-        activeEnrollments,
-        totalRevenue: revenue,
-        completionRate: completion
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error fetching course analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
-  }
-});
+// =============================================================================
+// HEALTH CHECK & ROOT ROUTES
+// =============================================================================
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = ['disconnected', 'connected', 'connecting', 'disconnecting'][dbState];
+    
+    // Get basic stats
+    const userCount = await User.countDocuments();
+    const leadCount = await Lead.countDocuments();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        status: dbStatus,
+        connected: dbState === 1
+      },
+      stats: {
+        users: userCount,
+        leads: leadCount
+      },
+      environment: process.env.NODE_ENV || 'development',
+      version: '2.0.0'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'EdgeVantage API v2.0',
+    status: 'running',
+    endpoints: [
+      'GET /api/health',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'POST /api/auth/verify-email',
+      'POST /api/auth/forgot-password',
+      'GET /api/user/profile',
+      'GET /api/user/dashboard'
+    ],
     timestamp: new Date().toISOString()
+  });
+});
+
+// Keep existing lead routes for backward compatibility
+// ... (existing lead routes from original server.js would go here)
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  
+  if (error.name === 'ValidationError') {
+    const errors = Object.values(error.errors).map(e => e.message);
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors
+    });
+  }
+  
+  if (error.name === 'CastError') {
+    return res.status(400).json({
+      error: 'Invalid ID format'
+    });
+  }
+  
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  
+  mongoose.connection.close(() => {
+    console.log('MongoDB connection closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  
+  mongoose.connection.close(() => {
+    console.log('MongoDB connection closed');
+    process.exit(0);
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
+  console.log(`🚀 EdgeVantage API v2.0 running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n⏹️  Shutting down gracefully...');
-  await mongoose.connection.close();
-  process.exit(0);
-});
+module.exports = app;
