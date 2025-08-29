@@ -4,7 +4,7 @@ import {
   AlertCircle, TrendingUp, Download, Settings, LogOut, Bell,
   Shield, Mail, Award, Activity, CreditCard, FileText,
   ChevronRight, ExternalLink, Zap, Star, Lock, Key,
-  MailCheck, AlertTriangle
+  MailCheck, AlertTriangle, X, Users
 } from 'lucide-react';
 
 const UserDashboardEnhanced = () => {
