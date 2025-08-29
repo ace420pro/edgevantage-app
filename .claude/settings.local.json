@@ -4,7 +4,10 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Bash(set PORT=3000)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(find:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

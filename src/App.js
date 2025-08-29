@@ -9,7 +9,6 @@ import AffiliatePortal from './AffiliatePortal';
 import ChatWidget from './ChatWidget';
 import EducationHub from './EducationHub';
 import ABTestManager from './ABTestManager';
-import FeatureBanner from './FeatureBanner';
 
 // Analytics Helper Functions
 const trackEvent = (eventName, properties = {}) => {
@@ -173,16 +172,6 @@ function MainApp() {
       console.log(' Heatmap tracking initialized');
     }
 
-    // Add event listener for feature banner
-    const handleOpenAuthModal = () => {
-      setShowAuthModal(true);
-    };
-
-    window.addEventListener('openAuthModal', handleOpenAuthModal);
-
-    return () => {
-      window.removeEventListener('openAuthModal', handleOpenAuthModal);
-    };
   }, [sessionId, startTime]);
 
   // Live stats feature removed per user request
@@ -1407,7 +1396,6 @@ function MainApp() {
 
   return (
     <div>
-      <FeatureBanner />
       {renderContent()}
       
       {/* Auth Modal - Always rendered */}
