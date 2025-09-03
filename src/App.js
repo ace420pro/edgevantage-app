@@ -62,6 +62,13 @@ const trackConversion = (conversionType, value = 0) => {
 function MainApp() {
   // API URL - force relative path since backend and frontend are on same domain
   const API_URL = '';
+  
+  // Company Contact Information
+  const COMPANY_PHONE = '(817) 204-6783';
+  const COMPANY_PHONE_FORMATTED = '(817) 204-6783';
+  const COMPANY_SMS = '+18172046783'; // For SMS/text messaging
+  const COMPANY_EMAIL = 'support@edgevantagepro.com';
+  
   const [currentStep, setCurrentStep] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
@@ -1352,8 +1359,14 @@ function MainApp() {
               </div>
               <p className="text-blue-700 text-base sm:text-lg leading-relaxed">
                 We'll contact you at <span className="font-bold">{formData.email}</span> and <span className="font-bold">{formData.phone}</span> within 1-2 business days.
-                Please check your email (including spam folder) and answer calls from our team.
+                Please check your email (including spam folder) and answer calls/texts from our team.
               </p>
+              <div className="mt-4 flex items-center justify-center space-x-2">
+                <Phone className="w-4 h-4 text-blue-600" />
+                <p className="text-blue-600 font-semibold">
+                  Questions? Call or text us at {COMPANY_PHONE_FORMATTED}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -1377,9 +1390,22 @@ function MainApp() {
                 Submit Another Application
               </button>
               
-              <p className="text-gray-500 leading-relaxed text-sm sm:text-base">
-                Questions? Feel free to email us or call for immediate assistance. We're here to help!
-              </p>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                <p className="text-gray-700 font-semibold text-sm sm:text-base">Need Help? Contact Us:</p>
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-gray-600" />
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    Call or Text: <a href={`tel:${COMPANY_SMS}`} className="text-blue-600 hover:underline font-semibold">{COMPANY_PHONE_FORMATTED}</a>
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-gray-600" />
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    Email: <a href={`mailto:${COMPANY_EMAIL}`} className="text-blue-600 hover:underline font-semibold">{COMPANY_EMAIL}</a>
+                  </p>
+                </div>
+                <p className="text-gray-500 text-xs mt-2">We accept text messages for your convenience!</p>
+              </div>
               
               {/* Debug info for admin (hidden in production) */}
               <div className="text-xs text-gray-400 pt-4 border-t border-gray-200">
@@ -1395,8 +1421,81 @@ function MainApp() {
   };
 
   return (
-    <div>
-      {renderContent()}
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-grow">
+        {renderContent()}
+      </div>
+      
+      {/* Footer with Contact Information */}
+      <footer className="bg-gray-900 text-white mt-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Company Info */}
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <DollarSign className="w-6 h-6 text-emerald-400" />
+                <h3 className="text-lg font-bold">EdgeVantage</h3>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Your trusted partner for passive income opportunities.
+              </p>
+            </div>
+            
+            {/* Contact Info */}
+            <div>
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-emerald-400" />
+                  <a href={`tel:${COMPANY_SMS}`} className="text-gray-300 hover:text-white text-sm">
+                    Call/Text: {COMPANY_PHONE_FORMATTED}
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-emerald-400" />
+                  <a href={`mailto:${COMPANY_EMAIL}`} className="text-gray-300 hover:text-white text-sm">
+                    {COMPANY_EMAIL}
+                  </a>
+                </div>
+              </div>
+              <p className="text-gray-500 text-xs mt-3">
+                💬 Text messages welcome!
+              </p>
+            </div>
+            
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <div className="space-y-2">
+                <button 
+                  onClick={() => setCurrentStep('overview')}
+                  className="block text-gray-300 hover:text-white text-sm"
+                >
+                  Home
+                </button>
+                <button 
+                  onClick={() => setCurrentStep('application')}
+                  className="block text-gray-300 hover:text-white text-sm"
+                >
+                  Apply Now
+                </button>
+                <button 
+                  onClick={() => setShowAuthModal(true)}
+                  className="block text-gray-300 hover:text-white text-sm"
+                >
+                  Member Login
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-8 pt-6 text-center">
+            <p className="text-gray-500 text-xs">
+              © 2024 EdgeVantage. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
       
       {/* Auth Modal - Always rendered */}
       <AuthModalEnhanced 

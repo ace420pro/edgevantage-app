@@ -13,6 +13,10 @@ dotenv.config();
 // Import models
 const { User, Lead, Course, Enrollment, Payment, Affiliate, ABTest } = require('./models');
 
+// Import messaging services
+const { sendWelcomeSMS, sendWelcomeEmail, sendAdminNotification } = require('./services/messaging');
+const { sendNewApplicationEmail, sendWelcomeEmail: sendGmailWelcome } = require('./services/email-notifications');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -906,6 +910,23 @@ app.post('/api/leads', async (req, res) => {
     const savedLead = await newLead.save();
     
     console.log(`✅ New lead saved: ${savedLead.email} - Qualified: ${qualified}`);
+    
+    // Send notifications
+    try {
+      // Send welcome email to applicant
+      await sendGmailWelcome(savedLead.email, savedLead.name);
+      
+      // Send notification email to admin
+      await sendNewApplicationEmail({
+        ...savedLead.toObject(),
+        qualified
+      });
+      
+      console.log(`📧 Notification emails sent for ${savedLead.name}`);
+    } catch (msgError) {
+      console.error('Error sending notification emails:', msgError);
+      // Don't fail the request if messaging fails
+    }
     
     res.status(201).json({
       success: true,
