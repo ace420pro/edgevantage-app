@@ -376,6 +376,7 @@ const AdminDashboard = () => {
                 <label className="text-sm font-medium text-gray-600">Referral Code</label>
                 <input 
                   type="text"
+                  autoFocus="autoFocus"
                   placeholder="Enter referral code"
                   value={selectedLead.referralCode || ''}
                   onChange={(e) => {
