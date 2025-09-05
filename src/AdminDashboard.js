@@ -378,11 +378,12 @@ const AdminDashboard = () => {
               <div>
                 <label className="text-sm font-medium text-gray-600">Monthly Earnings</label>
                 <input 
+                  key={`earnings-${selectedLead._id}`}
                   ref={monthlyEarningsRef}
                   type="number"
                   min="0"
                   step="1"
-                  placeholder={selectedLead.monthlyEarnings}
+                  placeholder="Enter monthly earnings"
                   defaultValue={selectedLead.monthlyEarnings || ''}
                   className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 />
