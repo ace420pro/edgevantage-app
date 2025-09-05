@@ -345,6 +345,7 @@ const AdminDashboard = () => {
                 <label className="text-sm font-medium text-gray-600">Phone</label>
                 <input 
                   key="changenumber"
+                  autoFocus="autoFocus"
                   type="tel"
                   placeholder="Enter phone number"
                   value={selectedLead.phone || ''}
