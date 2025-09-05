@@ -382,7 +382,7 @@ const AdminDashboard = () => {
                   type="number"
                   min="0"
                   step="1"
-                  placeholder="Enter monthly earnings"
+                  placeholder={selectedLead.monthlyEarnings}
                   defaultValue={selectedLead.monthlyEarnings || ''}
                   className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 />
