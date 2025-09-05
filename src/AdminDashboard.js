@@ -46,9 +46,31 @@ const AdminDashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedAffiliate, setSelectedAffiliate] = useState(null);
   const [affiliateSearchTerm, setAffiliateSearchTerm] = useState('');
+  
+  // Local editing state - only syncs to selectedLead on save
+  const [localEdits, setLocalEdits] = useState({
+    phone: '',
+    referralCode: '',
+    monthlyEarnings: '',
+    notes: '',
+    status: ''
+  });
 
   // API base URL - force relative path since backend and frontend are on same domain
   const API_URL = '';
+
+  // Initialize local edits when a lead is selected
+  useEffect(() => {
+    if (selectedLead) {
+      setLocalEdits({
+        phone: selectedLead.phone || '',
+        referralCode: selectedLead.referralCode || '',
+        monthlyEarnings: selectedLead.monthlyEarnings || '',
+        notes: selectedLead.notes || '',
+        status: selectedLead.status || 'pending'
+      });
+    }
+  }, [selectedLead]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -321,10 +343,10 @@ const AdminDashboard = () => {
               <div>
                 <label className="text-sm font-medium text-gray-600">Status</label>
                 <select 
-                  value={selectedLead.status || 'pending'}
+                  value={localEdits.status}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSelectedLead(prev => ({ 
+                    setLocalEdits(prev => ({ 
                       ...prev, 
                       status: value 
                     }));
@@ -345,13 +367,12 @@ const AdminDashboard = () => {
                 <label className="text-sm font-medium text-gray-600">Phone</label>
                 <input 
                   key="changenumber"
-                  autoFocus="autoFocus"
                   type="tel"
                   placeholder="Enter phone number"
-                  value={selectedLead.phone || ''}
+                  value={localEdits.phone}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSelectedLead(prev => ({ 
+                    setLocalEdits(prev => ({ 
                       ...prev, 
                       phone: value
                     }));
@@ -376,12 +397,11 @@ const AdminDashboard = () => {
                 <label className="text-sm font-medium text-gray-600">Referral Code</label>
                 <input 
                   type="text"
-                  autoFocus="autoFocus"
                   placeholder="Enter referral code"
-                  value={selectedLead.referralCode || ''}
+                  value={localEdits.referralCode}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSelectedLead(prev => ({ 
+                    setLocalEdits(prev => ({ 
                       ...prev, 
                       referralCode: value
                     }));
@@ -396,20 +416,12 @@ const AdminDashboard = () => {
                   min="0"
                   step="1"
                   placeholder="Enter monthly earnings"
-                  value={selectedLead.monthlyEarnings || ''}
+                  value={localEdits.monthlyEarnings}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSelectedLead(prev => ({ 
+                    setLocalEdits(prev => ({ 
                       ...prev, 
                       monthlyEarnings: value
-                    }));
-                  }}
-                  onBlur={(e) => {
-                    // Convert to number on blur to validate
-                    const numValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                    setSelectedLead(prev => ({ 
-                      ...prev, 
-                      monthlyEarnings: numValue
                     }));
                   }}
                   className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
@@ -418,10 +430,10 @@ const AdminDashboard = () => {
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-600">Notes</label>
                 <textarea 
-                  value={selectedLead.notes || ''}
+                  value={localEdits.notes}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSelectedLead(prev => ({ 
+                    setLocalEdits(prev => ({ 
                       ...prev, 
                       notes: value 
                     }));
@@ -443,10 +455,10 @@ const AdminDashboard = () => {
               <button
                 onClick={() => {
                   console.log('Save button clicked');
-                  console.log('Current selectedLead:', selectedLead);
-                  const { _id, status, monthlyEarnings, notes, phone, referralCode } = selectedLead;
-                  console.log('Extracted values - ID:', _id, 'Status:', status, 'Earnings:', monthlyEarnings, 'Notes:', notes, 'Phone:', phone, 'RefCode:', referralCode);
-                  updateLeadStatus(_id, { status, monthlyEarnings, notes, phone, referralCode });
+                  console.log('Current localEdits:', localEdits);
+                  const { phone, referralCode, monthlyEarnings, notes, status } = localEdits;
+                  console.log('Extracted values - ID:', selectedLead._id, 'Status:', status, 'Earnings:', monthlyEarnings, 'Notes:', notes, 'Phone:', phone, 'RefCode:', referralCode);
+                  updateLeadStatus(selectedLead._id, { status, monthlyEarnings: Number(monthlyEarnings) || 0, notes, phone, referralCode });
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
