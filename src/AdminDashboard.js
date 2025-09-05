@@ -162,7 +162,7 @@ const AdminDashboard = () => {
         throw parseError;
       }
 
-      if (response.ok && data.success) {
+      if (response.ok) {
         console.log('Update successful, refreshing dashboard...');
         await fetchDashboardData();
         setSelectedLead(null);
@@ -343,7 +343,19 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Phone</label>
-                <p className="text-lg">{selectedLead.phone}</p>
+                <input 
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={selectedLead.phone || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      phone: value
+                    }));
+                  }}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Location</label>
@@ -360,7 +372,19 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Referral Code</label>
-                <p className="text-lg">{selectedLead.referralCode || 'Direct'}</p>
+                <input 
+                  type="text"
+                  placeholder="Enter referral code"
+                  value={selectedLead.referralCode || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      referralCode: value
+                    }));
+                  }}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Monthly Earnings</label>
@@ -374,10 +398,17 @@ const AdminDashboard = () => {
                     const value = e.target.value;
                     setSelectedLead(prev => ({ 
                       ...prev, 
-                      monthlyEarnings: value === '' ? 0 : parseInt(value) || 0 
+                      monthlyEarnings: value
                     }));
                   }}
-                  onFocus={(e) => e.target.select()}
+                  onBlur={(e) => {
+                    // Convert to number on blur to validate
+                    const numValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      monthlyEarnings: numValue
+                    }));
+                  }}
                   className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 />
               </div>
@@ -410,9 +441,9 @@ const AdminDashboard = () => {
                 onClick={() => {
                   console.log('Save button clicked');
                   console.log('Current selectedLead:', selectedLead);
-                  const { _id, status, monthlyEarnings, notes } = selectedLead;
-                  console.log('Extracted values - ID:', _id, 'Status:', status, 'Earnings:', monthlyEarnings, 'Notes:', notes);
-                  updateLeadStatus(_id, { status, monthlyEarnings, notes });
+                  const { _id, status, monthlyEarnings, notes, phone, referralCode } = selectedLead;
+                  console.log('Extracted values - ID:', _id, 'Status:', status, 'Earnings:', monthlyEarnings, 'Notes:', notes, 'Phone:', phone, 'RefCode:', referralCode);
+                  updateLeadStatus(_id, { status, monthlyEarnings, notes, phone, referralCode });
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
