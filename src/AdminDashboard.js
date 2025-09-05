@@ -321,12 +321,15 @@ const AdminDashboard = () => {
               <div>
                 <label className="text-sm font-medium text-gray-600">Status</label>
                 <select 
-                  value={selectedLead.status}
+                  value={selectedLead.status || 'pending'}
                   onChange={(e) => {
-                    const updated = { ...selectedLead, status: e.target.value };
-                    setSelectedLead(updated);
+                    const value = e.target.value;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      status: value 
+                    }));
                   }}
-                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 >
                   <option value="pending">Pending</option>
                   <option value="contacted">Contacted</option>
@@ -363,12 +366,19 @@ const AdminDashboard = () => {
                 <label className="text-sm font-medium text-gray-600">Monthly Earnings</label>
                 <input 
                   type="number"
-                  value={selectedLead.monthlyEarnings || 0}
+                  min="0"
+                  step="1"
+                  placeholder="Enter monthly earnings"
+                  value={selectedLead.monthlyEarnings || ''}
                   onChange={(e) => {
-                    const updated = { ...selectedLead, monthlyEarnings: e.target.value };
-                    setSelectedLead(updated);
+                    const value = e.target.value;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      monthlyEarnings: value === '' ? 0 : parseInt(value) || 0 
+                    }));
                   }}
-                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  onFocus={(e) => e.target.select()}
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 />
               </div>
               <div className="col-span-2">
@@ -376,11 +386,15 @@ const AdminDashboard = () => {
                 <textarea 
                   value={selectedLead.notes || ''}
                   onChange={(e) => {
-                    const updated = { ...selectedLead, notes: e.target.value };
-                    setSelectedLead(updated);
+                    const value = e.target.value;
+                    setSelectedLead(prev => ({ 
+                      ...prev, 
+                      notes: value 
+                    }));
                   }}
+                  placeholder="Add notes about this lead..."
                   rows="3"
-                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
                 />
               </div>
             </div>
