@@ -29,7 +29,7 @@ const AffiliatePortal = () => {
       }
       fetchAffiliateData(code);
     } else {
-      setError('No affiliate code provided');
+      // Allow users to access affiliate portal to sign up
       setIsLoading(false);
     }
   }, []);
@@ -120,7 +120,7 @@ const AffiliatePortal = () => {
     );
   }
 
-  if (error) {
+  if (error && error !== 'No affiliate code provided') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
@@ -139,6 +139,107 @@ const AffiliatePortal = () => {
   }
 
   const { affiliate, stats, recentReferrals, commissions, referralStats } = affiliateData || {};
+
+  // Show signup form if no affiliate code is provided
+  if (!affiliateCode && !affiliateData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              🚀 Join the EdgeVantage Affiliate Program
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Earn $50 for every successful referral. Help others discover passive income opportunities and get rewarded for it!
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <div className="flex items-center mb-4">
+                  <DollarSign className="w-8 h-8 text-green-600 mr-3" />
+                  <h3 className="text-xl font-bold text-gray-900">Earn $50 Per Referral</h3>
+                </div>
+                <p className="text-gray-600">
+                  Get paid $50 for every person you refer who gets approved and starts earning with EdgeVantage.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <div className="flex items-center mb-4">
+                  <Users className="w-8 h-8 text-blue-600 mr-3" />
+                  <h3 className="text-xl font-bold text-gray-900">Easy Sharing Tools</h3>
+                </div>
+                <p className="text-gray-600">
+                  Get your personalized referral link and marketing materials to share with friends, family, and social media.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <div className="flex items-center mb-4">
+                  <BarChart3 className="w-8 h-8 text-purple-600 mr-3" />
+                  <h3 className="text-xl font-bold text-gray-900">Track Your Success</h3>
+                </div>
+                <p className="text-gray-600">
+                  Monitor your referrals, track conversions, and see your earnings in real-time through your affiliate dashboard.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-xl p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Get Started as an Affiliate</h2>
+              
+              <div className="space-y-6">
+                <div className="text-center">
+                  <p className="text-gray-600 mb-4">
+                    To become an EdgeVantage affiliate, you need to first complete the EdgeVantage application process.
+                  </p>
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-green-700 transition-colors"
+                  >
+                    Apply for EdgeVantage First
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Already approved?</span>
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <p className="text-gray-600 mb-4">
+                    If you're already approved for EdgeVantage, contact us to get your affiliate code.
+                  </p>
+                  <div className="space-y-3">
+                    <a
+                      href="tel:(817)204-6783"
+                      className="w-full bg-gray-100 text-gray-900 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call (817) 204-6783
+                    </a>
+                    <a
+                      href="mailto:support@edgevantagepro.com"
+                      className="w-full bg-gray-100 text-gray-900 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Email Support
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
