@@ -1,5 +1,5 @@
 // api/courses.js - Course management endpoints for Education Hub
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/edgevantage';
 
@@ -132,7 +132,7 @@ const mockCourses = [
   }
 ];
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -225,4 +225,4 @@ module.exports = async (req, res) => {
       message: error.message
     });
   }
-};
+}

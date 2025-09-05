@@ -1,6 +1,6 @@
 // api/enrollments.js - Course enrollment management
-const { MongoClient, ObjectId } = require('mongodb');
-const jwt = require('jsonwebtoken');
+import { MongoClient, ObjectId } from 'mongodb';
+import jwt from 'jsonwebtoken';
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/edgevantage';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -33,7 +33,7 @@ function verifyToken(token) {
   }
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -226,4 +226,4 @@ module.exports = async (req, res) => {
       message: error.message
     });
   }
-};
+}

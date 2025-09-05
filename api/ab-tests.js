@@ -1,5 +1,5 @@
 // api/ab-tests.js - A/B Testing management endpoint
-const { MongoClient, ObjectId } = require('mongodb');
+import { MongoClient, ObjectId } from 'mongodb';
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/edgevantage';
 
@@ -61,7 +61,7 @@ const mockTests = [
   }
 ];
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -171,4 +171,4 @@ module.exports = async (req, res) => {
       message: error.message
     });
   }
-};
+}
