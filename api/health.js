@@ -33,23 +33,22 @@ export default asyncHandler(async function handler(req, res) {
     // Database health check
     const dbStartTime = Date.now();
     try {
-      await connectToDatabase();
-      const leadCount = await (await getCollection('leads')).countDocuments();
-      const userCount = await (await getCollection('users')).countDocuments();
+      const { db } = await connectToDatabase();
+      // Simple ping test instead of counting documents
+      await db.admin().ping();
       
       healthData.database = {
         status: 'connected',
         responseTime: Date.now() - dbStartTime,
-        collections: {
-          leads: leadCount,
-          users: userCount
-        }
+        connection: 'ping successful'
       };
     } catch (dbError) {
+      console.error('Health check database error:', dbError);
       healthData.database = {
         status: 'error',
         error: dbError.message,
-        responseTime: Date.now() - dbStartTime
+        responseTime: Date.now() - dbStartTime,
+        details: dbError.codeName || 'Unknown error'
       };
       healthData.status = 'degraded';
     }

@@ -71,3 +71,4 @@ Thumbs.db
 tmp/
 temp/
 
+.env*.local
