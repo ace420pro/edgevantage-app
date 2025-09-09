@@ -129,7 +129,7 @@ export default async function handler(req, res) {
               <div class="error">
                 <h2>❌ Link Expired or Invalid</h2>
                 <p>This verification link has expired or is no longer valid. Please request a new verification email.</p>
-                <a href="https://edgevantagepro.com/login" class="button">Login to Resend Verification</a>
+                <a href="https://edgevantagepro.com" class="button">Go to EdgeVantage</a>
               </div>
             </div>
           </body>
@@ -202,7 +202,7 @@ export default async function handler(req, res) {
             </div>
             
             <div style="text-align: center; margin-top: 30px;">
-              <a href="https://edgevantagepro.com/login" class="button">Access Your Dashboard</a>
+              <a href="https://edgevantagepro.com/account" class="button">Access Your Dashboard</a>
             </div>
             
             <p style="text-align: center; margin-top: 20px; color: #666;">
@@ -254,7 +254,7 @@ export default async function handler(req, res) {
             <div class="error">
               <h2>⚠️ Verification Error</h2>
               <p>We encountered an issue while verifying your email. Please try again or contact support.</p>
-              <a href="https://edgevantagepro.com/login" class="button">Try Again</a>
+              <a href="https://edgevantagepro.com" class="button">Try Again</a>
             </div>
           </div>
         </body>
