@@ -293,6 +293,81 @@ const emailTemplates = {
       </body>
       </html>
     `
+  }),
+
+  // Email verification template
+  emailVerification: (data) => ({
+    subject: 'Verify Your EdgeVantage Account Email',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 15px 35px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+          .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .expire-notice { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin: 15px 0; font-size: 14px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          h1 { margin: 0; }
+          .highlight { color: #667eea; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Verify Your Email</h1>
+            <p style="margin: 10px 0 0 0;">Secure Your EdgeVantage Account</p>
+          </div>
+          <div class="content">
+            <h2>Hi ${data.name || 'there'},</h2>
+            <p>Thank you for creating an EdgeVantage account! To complete your registration and secure your account, please verify your email address.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${data.verificationUrl}" 
+                 class="button" 
+                 style="font-size: 16px;">
+                ✅ Verify My Email
+              </a>
+            </div>
+            
+            <div class="expire-notice">
+              ⏰ <strong>Important:</strong> This verification link will expire in 24 hours for security reasons.
+            </div>
+            
+            <h3>Why verify your email?</h3>
+            <ul>
+              <li>🔐 Secure your account and protect your data</li>
+              <li>📧 Receive important updates about your passive income opportunity</li>
+              <li>🚀 Access all EdgeVantage features and your dashboard</li>
+              <li>💰 Track your earnings and application status</li>
+            </ul>
+            
+            <div class="warning-box">
+              <h3 style="margin-top: 0;">🔒 Security Notice</h3>
+              <p style="margin-bottom: 0;">If you didn't create an EdgeVantage account, please ignore this email. Your email will not be used for anything else.</p>
+            </div>
+            
+            <h3>Trouble with the button?</h3>
+            <p>If the verification button doesn't work, you can copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px;">
+              ${data.verificationUrl}
+            </p>
+            
+            <div class="footer">
+              <p>Best regards,<br>The EdgeVantage Team</p>
+              <p style="font-size: 12px; color: #999;">
+                © 2024 EdgeVantage. All rights reserved.<br>
+                You're receiving this email because you registered at edgevantagepro.com
+              </p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   })
 };
 
