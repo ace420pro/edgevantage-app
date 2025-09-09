@@ -114,6 +114,7 @@ export default async function handler(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
+        emailVerified: user.emailVerified || false,
         profile: user.profile,
         settings: user.settings
       },
@@ -145,6 +146,11 @@ export default async function handler(req, res) {
       } : null,
       earnings,
       progress,
+      accountSecurity: {
+        emailVerified: user.emailVerified || false,
+        twoFactorEnabled: user.twoFactorEnabled || false,
+        lastLogin: user.lastLogin || user.updatedAt
+      },
       notifications: [] // Would be populated from notifications collection
     });
 
