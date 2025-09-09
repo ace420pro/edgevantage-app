@@ -79,12 +79,10 @@ export default async function handler(req, res) {
     const db = client.db('edgevantage');
     const usersCollection = db.collection('users');
 
-    // Hash the token to match stored format
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
     // Find user by verification token and check expiration
+    // Note: Token is stored directly (not hashed) in resend-verification.js
     const user = await usersCollection.findOne({
-      emailVerificationToken: hashedToken,
+      emailVerificationToken: token,
       emailVerificationExpires: { $gt: new Date() }
     });
     
