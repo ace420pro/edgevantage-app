@@ -1,51 +1,47 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { requireAuth } from '../lib/auth.js';
+import { connectToDatabase, getCollection } from '../lib/database.js';
+import { 
+  setCorsHeaders, 
+  setSecurityHeaders, 
+  handleOptions, 
+  handleMethodNotAllowed,
+  rateLimit 
+} from '../lib/middleware.js';
+import { 
+  asyncHandler, 
+  CommonErrors
+} from '../lib/errors.js';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
+export default asyncHandler(async function handler(req, res) {
+  // Set security headers
+  setCorsHeaders(res);
+  setSecurityHeaders(res);
 
-async function connectToDatabase() {
-  if (cachedClient) {
-    return cachedClient;
-  }
+  // Handle preflight
+  if (handleOptions(req, res)) return;
+
+  // Check rate limiting
+  if (rateLimit(req, res)) return;
+
+  // Validate method
+  if (handleMethodNotAllowed(req, res, ['GET'])) return;
+
+  // Verify authentication
+  const authData = await requireAuth(req);
   
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
+  // Get database collections using shared utility
+  const usersCollection = await getCollection('users');
+  const leadsCollection = await getCollection('leads');
+  const shipmentsCollection = await getCollection('shipments');
+  const appointmentsCollection = await getCollection('appointments');
+  const earningsCollection = await getCollection('earnings');
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  // Get user data
+  const user = await usersCollection.findOne({ _id: new ObjectId(authData.userId) });
+  if (!user) {
+    throw CommonErrors.USER_NOT_FOUND;
   }
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  try {
-    // Verify authentication
-    const authData = await requireAuth(req);
-    
-    const client = await connectToDatabase();
-    const db = client.db('edgevantage');
-    const usersCollection = db.collection('users');
-    const leadsCollection = db.collection('leads');
-    const shipmentsCollection = db.collection('shipments');
-    const appointmentsCollection = db.collection('appointments');
-    const earningsCollection = db.collection('earnings');
-
-    // Get user data
-    const user = await usersCollection.findOne({ _id: new ObjectId(authData.userId) });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Get application data
     let application = null;
@@ -154,11 +150,4 @@ export default async function handler(req, res) {
       notifications: [] // Would be populated from notifications collection
     });
 
-  } catch (error) {
-    console.error('Dashboard error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch dashboard data',
-      details: error.message 
-    });
-  }
-}
+});
