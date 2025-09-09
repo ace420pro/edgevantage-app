@@ -82,7 +82,7 @@ export default async function handler(req, res) {
         name: user.name,
         email: user.email,
         verificationToken: verificationToken,
-        verificationUrl: `${process.env.FRONTEND_URL || 'https://edgevantagepro.com'}/verify-email?token=${verificationToken}`
+        verificationUrl: `${process.env.FRONTEND_URL || 'https://edgevantagepro.com'}/api/auth/verify-email?token=${verificationToken}`
       });
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
