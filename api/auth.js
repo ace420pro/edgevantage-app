@@ -1,66 +1,71 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { hashPassword, verifyPassword, generateToken, verifyToken, generateResetToken } from './lib/auth.js';
 import { sendEmail } from './lib/email-service.js';
+import { connectToDatabase, getCollection } from './lib/database.js';
+import { 
+  setCorsHeaders, 
+  setSecurityHeaders, 
+  handleOptions, 
+  handleMethodNotAllowed,
+  authRateLimit 
+} from './lib/middleware.js';
+import { 
+  asyncHandler, 
+  handleError, 
+  validateRequired, 
+  validateEmail, 
+  validatePassword,
+  CommonErrors,
+  APIError,
+  ErrorTypes
+} from './lib/errors.js';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
+export default asyncHandler(async function handler(req, res) {
+  // Set security headers
+  setCorsHeaders(res);
+  setSecurityHeaders(res);
 
-async function connectToDatabase() {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
+  // Handle preflight
+  if (handleOptions(req, res)) return;
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Check rate limiting for auth endpoints
+  if (authRateLimit(req, res)) return;
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  // Validate method
+  if (handleMethodNotAllowed(req, res, ['POST'])) return;
 
   const { action } = req.body;
 
-  try {
-    const client = await connectToDatabase();
-    const db = client.db('edgevantage');
-    const usersCollection = db.collection('users');
-    const leadsCollection = db.collection('leads');
+  // Validate action parameter
+  validateRequired(req.body, ['action']);
 
-    switch (action) {
-      case 'register':
-        return await handleRegister(req, res, usersCollection, leadsCollection);
-      case 'login':
-        return await handleLogin(req, res, usersCollection, leadsCollection);
-      case 'forgot-password':
-        return await handleForgotPassword(req, res, usersCollection);
-      case 'reset-password':
-        return await handleResetPassword(req, res, usersCollection);
-      default:
-        return res.status(400).json({ error: 'Invalid action' });
-    }
-  } catch (error) {
-    console.error('Auth error:', error);
-    return res.status(500).json({ 
-      error: 'Authentication failed. Please try again.',
-      details: error.message 
-    });
+  // Get database collections using new shared utility
+  const usersCollection = await getCollection('users');
+  const leadsCollection = await getCollection('leads');
+
+  switch (action) {
+    case 'register':
+      return await handleRegister(req, res, usersCollection, leadsCollection);
+    case 'login':
+      return await handleLogin(req, res, usersCollection, leadsCollection);
+    case 'forgot-password':
+      return await handleForgotPassword(req, res, usersCollection);
+    case 'reset-password':
+      return await handleResetPassword(req, res, usersCollection);
+    default:
+      throw new APIError('Invalid action', 400, ErrorTypes.VALIDATION_ERROR);
   }
-}
+});
 
 async function handleRegister(req, res, usersCollection, leadsCollection) {
   const { email, password, name, setupToken } = req.body;
+  
+  // Validate required fields
+  validateRequired(req.body, ['email', 'password', 'name']);
+  
+  // Validate and sanitize inputs
+  const validEmail = validateEmail(email);
+  const validPassword = validatePassword(password);
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Email, password, and name are required' });

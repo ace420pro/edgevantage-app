@@ -1,47 +1,43 @@
-import { MongoClient } from 'mongodb';
-import crypto from 'crypto';
+import { connectToDatabase, getCollection } from '../lib/database.js';
+import { 
+  setCorsHeaders, 
+  setSecurityHeaders, 
+  handleOptions, 
+  handleMethodNotAllowed,
+  rateLimit 
+} from '../lib/middleware.js';
+import { 
+  asyncHandler, 
+  APIError,
+  ErrorTypes,
+  CommonErrors
+} from '../lib/errors.js';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
+export default asyncHandler(async function handler(req, res) {
+  // Set security headers
+  setCorsHeaders(res);
+  setSecurityHeaders(res);
 
-async function connectToDatabase() {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
+  // Handle preflight
+  if (handleOptions(req, res)) return;
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  // Check rate limiting
+  if (rateLimit(req, res)) return;
 
   // Support both GET (clicking link) and POST (API call)
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (handleMethodNotAllowed(req, res, ['GET', 'POST'])) return;
 
-  try {
-    // Get token from query params (GET) or body (POST)
-    const token = req.method === 'GET' ? req.query.token : req.body.token;
-    
-    console.log('🔍 Verification attempt:', { 
-      method: req.method, 
-      token: token ? `${token.substring(0, 8)}...` : null,
-      query: req.query,
-      body: req.body 
-    });
+  // Get token from query params (GET) or body (POST)
+  const token = req.method === 'GET' ? req.query.token : req.body.token;
+  
+  console.log('🔍 Verification attempt:', { 
+    method: req.method, 
+    token: token ? `${token.substring(0, 8)}...` : null,
+    query: req.query,
+    body: req.body 
+  });
 
-    if (!token) {
+  if (!token) {
       if (req.method === 'GET') {
         // Return HTML page for missing token
         return res.status(400).send(`
@@ -82,9 +78,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const client = await connectToDatabase();
-    const db = client.db('edgevantage');
-    const usersCollection = db.collection('users');
+    // Get users collection using shared utility
+    const usersCollection = await getCollection('users');
 
     // Find user by verification token and check expiration
     // Note: Token is stored directly (not hashed) in resend-verification.js
@@ -225,46 +220,4 @@ export default async function handler(req, res) {
       }
     });
 
-  } catch (error) {
-    console.error('❌ Email verification error:', error.message, error.stack);
-    
-    if (req.method === 'GET') {
-      return res.status(500).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>EdgeVantage - Verification Error</title>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-            .header { text-align: center; margin-bottom: 30px; }
-            .logo { font-size: 24px; font-weight: bold; color: #667eea; }
-            .error { color: #dc3545; text-align: center; }
-            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <div class="logo">EdgeVantage</div>
-              <h1>Email Verification</h1>
-            </div>
-            <div class="error">
-              <h2>⚠️ Verification Error</h2>
-              <p>We encountered an issue while verifying your email. Please try again or contact support.</p>
-              <a href="https://edgevantagepro.com" class="button">Try Again</a>
-            </div>
-          </div>
-        </body>
-        </html>
-      `);
-    }
-
-    return res.status(500).json({ 
-      error: 'Email verification failed',
-      code: 'VERIFICATION_ERROR'
-    });
-  }
-}
+});

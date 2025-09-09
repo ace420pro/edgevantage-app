@@ -1,34 +1,34 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { sendEmail } from './lib/email-service.js';
 import { generateSetupToken } from './lib/auth.js';
+import { connectToDatabase, getCollection } from './lib/database.js';
+import { 
+  setCorsHeaders, 
+  setSecurityHeaders, 
+  handleOptions, 
+  rateLimit 
+} from './lib/middleware.js';
+import { 
+  asyncHandler, 
+  validateRequired,
+  validateEmail,
+  APIError,
+  ErrorTypes
+} from './lib/errors.js';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
+export default asyncHandler(async function handler(req, res) {
+  // Set security headers
+  setCorsHeaders(res);
+  setSecurityHeaders(res);
 
-async function connectToDatabase() {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
+  // Handle preflight
+  if (handleOptions(req, res)) return;
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Check rate limiting
+  if (rateLimit(req, res)) return;
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  try {
-    const client = await connectToDatabase();
-    const db = client.db('edgevantage');
+  // Get database collection using shared utility
+  const leadsCollection = await getCollection('leads');
     const collection = db.collection('leads');
     
     // Debug database connection
