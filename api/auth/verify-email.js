@@ -33,6 +33,13 @@ export default async function handler(req, res) {
   try {
     // Get token from query params (GET) or body (POST)
     const token = req.method === 'GET' ? req.query.token : req.body.token;
+    
+    console.log('🔍 Verification attempt:', { 
+      method: req.method, 
+      token: token ? `${token.substring(0, 8)}...` : null,
+      query: req.query,
+      body: req.body 
+    });
 
     if (!token) {
       if (req.method === 'GET') {
@@ -84,6 +91,14 @@ export default async function handler(req, res) {
     const user = await usersCollection.findOne({
       emailVerificationToken: token,
       emailVerificationExpires: { $gt: new Date() }
+    });
+    
+    console.log('👤 User lookup result:', { 
+      found: !!user, 
+      email: user?.email,
+      tokenInDb: user?.emailVerificationToken ? `${user.emailVerificationToken.substring(0, 8)}...` : null,
+      expires: user?.emailVerificationExpires,
+      verified: user?.emailVerified 
     });
     
     if (!user) {
@@ -211,7 +226,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Email verification error:', error);
+    console.error('❌ Email verification error:', error.message, error.stack);
     
     if (req.method === 'GET') {
       return res.status(500).send(`
