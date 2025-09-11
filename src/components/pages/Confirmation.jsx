@@ -250,6 +250,16 @@ const Confirmation = memo(({
             </div>
           </div>
 
+          {/* New Application Button */}
+          <div className="text-center mt-8">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 inline-flex items-center gap-3"
+            >
+              Complete Another Application
+            </button>
+          </div>
+
           {/* Footer Message */}
           <div className="text-center mt-12">
             <p className="text-gray-500 text-lg">

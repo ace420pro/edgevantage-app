@@ -15,7 +15,6 @@ const UserDashboardEnhanced = () => <div>User Dashboard</div>;
 const AuthModalEnhanced = ({ isOpen, onClose, onSuccess }) => isOpen ? <div>Auth Modal</div> : null;
 const ResetPassword = () => <div>Reset Password</div>;
 const AffiliatePortal = () => <div>Affiliate Portal</div>;
-const ChatWidget = () => <div>Chat Widget</div>;
 const EducationHub = () => <div>Education Hub</div>;
 const ABTestManager = () => <div>AB Test Manager</div>;
 
@@ -580,9 +579,6 @@ function AccessibleMainApp() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
-      
-      {/* Live Chat Widget */}
-      <ChatWidget />
     </div>
   );
 }

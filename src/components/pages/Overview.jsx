@@ -4,14 +4,7 @@ import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monit
 const Overview = memo(({ 
   onContinue, 
   trackEvent, 
-  trackPageView,
-  showEmailPopup,
-  setShowEmailPopup,
-  emailModalStep,
-  setEmailModalStep,
-  emailFormData,
-  setEmailFormData,
-  handleEmailCapture
+  trackPageView
 }) => {
   React.useEffect(() => {
     trackPageView('Overview Page');
@@ -31,28 +24,28 @@ const Overview = memo(({
     {
       name: "Sarah M.",
       location: "Austin, TX",
-      monthly: "$847",
+      monthly: "$385",
       quote: "I couldn't believe how simple it was. They handled everything - installation, maintenance, monitoring. I just collect my monthly check!",
       avatar: "👩‍💼"
     },
     {
       name: "Mike R.",
       location: "Phoenix, AZ", 
-      monthly: "$923",
+      monthly: "$467",
       quote: "Best decision I've made for passive income. The equipment is barely noticeable and the monthly payments are always on time.",
       avatar: "👨‍🔧"
     },
     {
       name: "Lisa K.",
       location: "Denver, CO",
-      monthly: "$756",
-      quote: "Started 6 months ago and already earned over $4,500. It's truly passive - I barely think about it anymore.",
+      monthly: "$342",
+      quote: "Started 6 months ago and already earned over $2,000. It's truly passive - I barely think about it anymore.",
       avatar: "👩‍🎨"
     },
     {
       name: "David Chen",
       location: "Portland, OR",
-      monthly: "$892",
+      monthly: "$425",
       quote: "The team was professional from day one. Installation took 2 hours and I've been earning ever since. Highly recommend!",
       avatar: "👨‍💻"
     }
@@ -275,65 +268,6 @@ const Overview = memo(({
         </div>
       </div>
 
-      {/* Email Popup Modal */}
-      {showEmailPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
-            <button 
-              onClick={() => setShowEmailPopup(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
-            >
-              ×
-            </button>
-            
-            {emailModalStep === 1 && (
-              <div className="text-center">
-                <div className="text-6xl mb-4">📧</div>
-                <h3 className="text-2xl font-display font-bold text-gray-900 mb-4">
-                  Don't Miss Out!
-                </h3>
-                <p className="font-body text-gray-600 mb-6">
-                  Get our free guide: "5 Ways to Maximize Your Passive Income"
-                </p>
-                <input
-                  type="email"
-                  placeholder="Enter your email address"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={emailFormData.email}
-                  onChange={(e) => setEmailFormData({...emailFormData, email: e.target.value})}
-                />
-                <button 
-                  onClick={handleEmailCapture}
-                  className="w-full bg-emerald-500 text-white py-3 rounded-xl hover:bg-emerald-600 transition-colors font-semibold"
-                >
-                  Send Me The Guide
-                </button>
-              </div>
-            )}
-            
-            {emailModalStep === 2 && (
-              <div className="text-center">
-                <div className="text-6xl mb-4">✅</div>
-                <h3 className="text-2xl font-display font-bold text-gray-900 mb-4">
-                  Check Your Email!
-                </h3>
-                <p className="font-body text-gray-600 mb-6">
-                  Your free guide is on its way. Ready to start your application?
-                </p>
-                <button 
-                  onClick={() => {
-                    setShowEmailPopup(false);
-                    handleContinueClick();
-                  }}
-                  className="w-full bg-emerald-500 text-white py-3 rounded-xl hover:bg-emerald-600 transition-colors font-semibold"
-                >
-                  Start My Application
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 });

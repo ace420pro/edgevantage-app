@@ -13,7 +13,6 @@ const UserDashboardEnhanced = lazy(() => import('./UserDashboardEnhanced'));
 const AuthModalEnhanced = lazy(() => import('./AuthModalEnhanced'));
 const ResetPassword = lazy(() => import('./ResetPassword'));
 const AffiliatePortal = lazy(() => import('./AffiliatePortal'));
-const ChatWidget = lazy(() => import('./ChatWidget'));
 const EducationHub = lazy(() => import('./EducationHub'));
 const ABTestManager = lazy(() => import('./ABTestManager'));
 
@@ -46,10 +45,6 @@ function MainApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
-  // Email popup state
-  const [showEmailPopup, setShowEmailPopup] = useState(false);
-  const [emailModalStep, setEmailModalStep] = useState(1);
-  const [emailFormData, setEmailFormData] = useState({ email: '' });
   
   // Referral tracking
   const [referralCode, setReferralCode] = useState('');
@@ -68,19 +63,6 @@ function MainApp() {
     }
   }, [currentStep, formData.fullName]);
 
-  // Email popup trigger (after 30 seconds on overview page)
-  useEffect(() => {
-    let timer;
-    if (currentStep === 'overview') {
-      timer = setTimeout(() => {
-        setShowEmailPopup(true);
-        trackEvent('email_popup_triggered', { trigger: 'time_on_page', seconds: 30 });
-      }, 30000);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [currentStep, trackEvent]);
 
   // Handle form submission
   const handleFormSubmit = useCallback(async (submissionData) => {
@@ -137,32 +119,6 @@ function MainApp() {
     }
   }, [API_URL, sessionId, startTime, trackConversion, trackEvent, estimatedEarnings]);
 
-  // Handle email capture
-  const handleEmailCapture = useCallback(async () => {
-    if (!emailFormData.email) return;
-    
-    trackEvent('email_captured', {
-      email: emailFormData.email,
-      source: 'popup_modal'
-    });
-    
-    setEmailModalStep(2);
-    
-    // Optionally send email to backend
-    try {
-      await fetch(`${API_URL}/api/email-capture`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: emailFormData.email,
-          source: 'popup_modal',
-          sessionId 
-        })
-      });
-    } catch (error) {
-      console.error('Email capture error:', error);
-    }
-  }, [emailFormData.email, API_URL, sessionId, trackEvent]);
 
   // Keyboard shortcut for admin dashboard
   useEffect(() => {
@@ -192,15 +148,8 @@ function MainApp() {
   const overviewProps = useMemo(() => ({
     onContinue: handleContinue,
     trackEvent,
-    trackPageView,
-    showEmailPopup,
-    setShowEmailPopup,
-    emailModalStep,
-    setEmailModalStep,
-    emailFormData,
-    setEmailFormData,
-    handleEmailCapture
-  }), [handleContinue, trackEvent, trackPageView, showEmailPopup, emailModalStep, emailFormData, handleEmailCapture]);
+    trackPageView
+  }), [handleContinue, trackEvent, trackPageView]);
 
   const applicationProps = useMemo(() => ({
     formData,
@@ -279,10 +228,6 @@ function MainApp() {
           } />
         </Routes>
 
-        {/* Global Components */}
-        <Suspense fallback={null}>
-          <ChatWidget />
-        </Suspense>
 
         {showAuthModal && (
           <Suspense fallback={<LoadingSpinner />}>

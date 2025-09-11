@@ -33,12 +33,6 @@ jest.mock('./AffiliatePortal', () => {
   };
 });
 
-jest.mock('./ChatWidget', () => {
-  return function ChatWidget() {
-    return <div>Chat Widget</div>;
-  };
-});
-
 jest.mock('./EducationHub', () => {
   return function EducationHub() {
     return <div>Education Hub</div>;
