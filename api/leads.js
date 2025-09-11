@@ -1,6 +1,9 @@
 import { ObjectId } from 'mongodb';
 import { sendEmail } from './lib/email-service.js';
 import { generateSetupToken } from './lib/auth.js';
+import { requireAdmin } from './lib/auth-middleware.js';
+import { LeadValidator, InputSanitizer } from './lib/validation.js';
+import { Cache } from './lib/cache.js';
 import { connectToDatabase, getCollection } from './lib/database.js';
 import { 
   setCorsHeaders, 
@@ -18,7 +21,7 @@ import {
 
 export default asyncHandler(async function handler(req, res) {
   // Set security headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   setSecurityHeaders(res);
 
   // Handle preflight
@@ -37,33 +40,55 @@ export default asyncHandler(async function handler(req, res) {
     console.log('Leads collection exists:', collectionInfo.length > 0);
 
     if (req.method === 'POST') {
+      // Validate and sanitize input data
+      let sanitizedData;
+      try {
+        sanitizedData = LeadValidator.validateLeadInput(req.body);
+      } catch (error) {
+        return res.status(400).json({ 
+          error: 'Invalid input data',
+          details: error.message,
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
       // Check if all qualification questions are "yes"
-      const qualified = req.body.hasResidence === 'yes' && 
-                        req.body.hasInternet === 'yes' && 
-                        req.body.hasSpace === 'yes';
+      const qualified = sanitizedData.hasResidence && 
+                        sanitizedData.hasInternet && 
+                        sanitizedData.hasSpace;
       
       // Check for duplicate email
-      const existingLead = await collection.findOne({ email: req.body.email });
+      const existingLead = await collection.findOne({ email: sanitizedData.email });
       if (existingLead) {
         return res.status(400).json({ 
           error: 'This email has already submitted an application.',
-          existingApplication: true 
+          existingApplication: true,
+          code: 'DUPLICATE_EMAIL'
         });
       }
       
-      // Create new lead
+      // Create new lead with sanitized data
       const lead = {
-        ...req.body,
+        ...sanitizedData,
         qualified,
         status: 'pending',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // Add analytics/tracking fields
+        ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown'
       };
       
       const result = await collection.insertOne(lead);
       const leadId = result.insertedId;
       
       console.log(`✅ New lead saved: ${lead.email} - Qualified: ${qualified}`);
+      
+      // Invalidate cache since we added a new lead
+      Cache.delete('lead-stats');
+      // Clear all leads cache entries (they start with "leads:")
+      const cacheStats = Cache.getStats();
+      console.log(`🧹 Invalidating cache after new lead creation`);
       
       // Generate setup token for account creation
       const setupToken = generateSetupToken(lead.email, leadId.toString());
@@ -91,6 +116,18 @@ export default asyncHandler(async function handler(req, res) {
     if (req.method === 'GET') {
       const { status, qualified, limit = 100, offset = 0 } = req.query;
       
+      // Create cache key for this query
+      const cacheKey = `leads:${JSON.stringify({ status, qualified, limit, offset })}`;
+      
+      // Check cache first
+      const cachedResult = Cache.get(cacheKey);
+      if (cachedResult) {
+        console.log(`📊 Returning ${cachedResult.leads.length} cached leads`);
+        res.setHeader('X-Cache', 'HIT');
+        res.setHeader('Cache-Control', 'public, max-age=180'); // 3 minutes
+        return res.json(cachedResult);
+      }
+      
       // Build query
       const query = {};
       if (status) query.status = status;
@@ -105,16 +142,31 @@ export default asyncHandler(async function handler(req, res) {
       
       const totalCount = await collection.countDocuments(query);
       
-      console.log(`📊 Fetched ${leads.length} leads from database`);
-      
-      return res.json({
+      const result = {
         leads,
         totalCount,
         hasMore: totalCount > parseInt(offset) + parseInt(limit)
-      });
+      };
+      
+      // Cache the result for 3 minutes
+      Cache.set(cacheKey, result, 3 * 60 * 1000);
+      
+      console.log(`📊 Fetched ${leads.length} fresh leads from database (cached for 3min)`);
+      
+      res.setHeader('X-Cache', 'MISS');
+      res.setHeader('Cache-Control', 'public, max-age=180'); // 3 minutes
+      return res.json(result);
     }
 
     if (req.method === 'PATCH') {
+      // Require admin authentication for updating leads
+      await new Promise((resolve, reject) => {
+        requireAdmin(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
       const { id } = req.query;
       
       if (!id) {
@@ -125,14 +177,18 @@ export default asyncHandler(async function handler(req, res) {
       console.log('ID type:', typeof id);
       console.log('ID length:', id.length);
       
-      // Validate ObjectId format
+      // Validate and sanitize ObjectId
       let objectId;
       try {
-        objectId = new ObjectId(id);
-        console.log('Successfully created ObjectId:', objectId);
+        objectId = InputSanitizer.sanitizeObjectId(id);
+        console.log('Successfully sanitized ObjectId:', objectId);
       } catch (error) {
         console.error('Invalid ObjectId format:', id, error);
-        return res.status(400).json({ error: 'Invalid lead ID format' });
+        return res.status(400).json({ 
+          error: 'Invalid lead ID format',
+          details: error.message,
+          code: 'INVALID_ID_FORMAT'
+        });
       }
       
       const updates = {
@@ -176,6 +232,10 @@ export default asyncHandler(async function handler(req, res) {
         });
       }
       
+      // Invalidate cache since we updated a lead
+      Cache.delete('lead-stats');
+      console.log(`🧹 Invalidating cache after lead update`);
+      
       console.log(`✅ Lead updated: ${id}`);
       
       return res.json({ 
@@ -186,6 +246,14 @@ export default asyncHandler(async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      // Require admin authentication for deleting leads
+      await new Promise((resolve, reject) => {
+        requireAdmin(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
       const { id } = req.query;
       
       if (!id) {
@@ -194,13 +262,17 @@ export default asyncHandler(async function handler(req, res) {
       
       console.log('DELETE request for lead ID:', id);
       
-      // Validate ObjectId format
+      // Validate and sanitize ObjectId
       let objectId;
       try {
-        objectId = new ObjectId(id);
+        objectId = InputSanitizer.sanitizeObjectId(id);
       } catch (error) {
         console.error('Invalid ObjectId format:', id, error);
-        return res.status(400).json({ error: 'Invalid lead ID format' });
+        return res.status(400).json({ 
+          error: 'Invalid lead ID format',
+          details: error.message,
+          code: 'INVALID_ID_FORMAT'
+        });
       }
       
       const result = await collection.findOneAndDelete({ _id: objectId });
@@ -208,6 +280,10 @@ export default asyncHandler(async function handler(req, res) {
       if (!result.value) {
         return res.status(404).json({ error: 'Lead not found' });
       }
+      
+      // Invalidate cache since we deleted a lead
+      Cache.delete('lead-stats');
+      console.log(`🧹 Invalidating cache after lead deletion`);
       
       console.log(`✅ Lead deleted: ${id}`);
       

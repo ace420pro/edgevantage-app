@@ -1,335 +1,321 @@
-// Comprehensive input validation utilities
-import { APIError, ErrorTypes } from './errors.js';
+import validator from 'validator';
+import { ObjectId } from 'mongodb';
 
-// Validation patterns
-const PATTERNS = {
-  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  phone: /^\+?[\d\s\-\(\)]{10,15}$/,
-  usPhone: /^\+?1?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/,
-  zipCode: /^\d{5}(-\d{4})?$/,
-  strongPassword: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-  alphaNumeric: /^[a-zA-Z0-9]+$/,
-  name: /^[a-zA-Z\s'-]{2,50}$/,
-  city: /^[a-zA-Z\s'-]{2,50}$/,
-  state: /^[a-zA-Z\s]{2,50}$/,
-  mongoObjectId: /^[a-f\d]{24}$/i,
-  jwt: /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/,
-  url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
-};
-
-// Validation schemas for different endpoints
-export const VALIDATION_SCHEMAS = {
-  userRegistration: {
-    name: { required: true, type: 'string', pattern: 'name', minLength: 2, maxLength: 50 },
-    email: { required: true, type: 'string', pattern: 'email', maxLength: 100 },
-    password: { required: true, type: 'string', minLength: 6, maxLength: 100 },
-    phone: { required: false, type: 'string', pattern: 'phone', maxLength: 20 }
-  },
-  
-  userLogin: {
-    email: { required: true, type: 'string', pattern: 'email', maxLength: 100 },
-    password: { required: true, type: 'string', minLength: 1, maxLength: 100 }
-  },
-  
-  leadApplication: {
-    name: { required: true, type: 'string', pattern: 'name', minLength: 2, maxLength: 50 },
-    email: { required: true, type: 'string', pattern: 'email', maxLength: 100 },
-    phone: { required: true, type: 'string', pattern: 'phone', maxLength: 20 },
-    state: { required: true, type: 'string', pattern: 'state', maxLength: 50 },
-    city: { required: true, type: 'string', pattern: 'city', maxLength: 50 },
-    hasResidence: { required: true, type: 'string', enum: ['yes', 'no'] },
-    hasInternet: { required: true, type: 'string', enum: ['yes', 'no'] },
-    hasSpace: { required: true, type: 'string', enum: ['yes', 'no'] },
-    agreeToTerms: { required: true, type: 'boolean', enum: [true] },
-    referralCode: { required: false, type: 'string', maxLength: 50 },
-    referralSource: { 
-      required: true, 
-      type: 'string', 
-      enum: ['google', 'social-media', 'friend-referral', 'advertisement', 'other'],
-      maxLength: 50 
+// Input sanitization utilities
+export class InputSanitizer {
+  // Sanitize string input
+  static sanitizeString(input, options = {}) {
+    if (typeof input !== 'string') {
+      throw new Error('Input must be a string');
     }
-  },
-  
-  passwordReset: {
-    email: { required: true, type: 'string', pattern: 'email', maxLength: 100 }
-  },
-  
-  passwordResetConfirm: {
-    token: { required: true, type: 'string', minLength: 10, maxLength: 500 },
-    password: { required: true, type: 'string', minLength: 6, maxLength: 100 }
-  },
-  
-  emailVerification: {
-    token: { required: true, type: 'string', minLength: 10, maxLength: 500 }
-  },
-  
-  affiliateApplication: {
-    name: { required: true, type: 'string', pattern: 'name', minLength: 2, maxLength: 50 },
-    email: { required: true, type: 'string', pattern: 'email', maxLength: 100 },
-    phone: { required: false, type: 'string', pattern: 'phone', maxLength: 20 },
-    experience: { required: false, type: 'string', maxLength: 500 },
-    motivation: { required: false, type: 'string', maxLength: 500 }
-  }
-};
 
-// Main validation function
-export function validateInput(data, schema, options = {}) {
-  const errors = [];
-  const sanitized = {};
-  const { strict = true, allowExtra = false } = options;
-  
-  // Check for required fields
-  for (const [field, rules] of Object.entries(schema)) {
-    const value = data[field];
+    let sanitized = input.trim();
     
-    // Check if required field is missing
-    if (rules.required && (value === undefined || value === null || value === '')) {
-      errors.push({
-        field,
-        message: `${field} is required`,
-        code: 'REQUIRED_FIELD'
-      });
-      continue;
+    if (options.escape) {
+      sanitized = validator.escape(sanitized);
     }
     
-    // Skip validation for optional missing fields
-    if (!rules.required && (value === undefined || value === null || value === '')) {
-      continue;
+    if (options.maxLength) {
+      sanitized = sanitized.substring(0, options.maxLength);
     }
     
-    // Validate field
-    const fieldErrors = validateField(field, value, rules);
-    if (fieldErrors.length > 0) {
-      errors.push(...fieldErrors);
-    } else {
-      // Sanitize and add to result
-      sanitized[field] = sanitizeValue(value, rules);
+    if (options.minLength && sanitized.length < options.minLength) {
+      throw new Error(`Input must be at least ${options.minLength} characters`);
     }
+    
+    return sanitized;
   }
-  
-  // Check for extra fields in strict mode
-  if (strict && !allowExtra) {
-    const extraFields = Object.keys(data).filter(key => !schema[key]);
-    if (extraFields.length > 0) {
-      errors.push({
-        field: 'extra_fields',
-        message: `Unexpected fields: ${extraFields.join(', ')}`,
-        code: 'EXTRA_FIELDS',
-        fields: extraFields
-      });
-    }
-  }
-  
-  // Throw validation error if any errors found
-  if (errors.length > 0) {
-    throw new APIError(
-      `Validation failed: ${errors.map(e => e.message).join(', ')}`,
-      400,
-      ErrorTypes.VALIDATION_ERROR,
-      { validationErrors: errors }
-    );
-  }
-  
-  return sanitized;
-}
 
-// Validate individual field
-function validateField(fieldName, value, rules) {
-  const errors = [];
-  
-  // Type validation
-  if (rules.type && typeof value !== rules.type) {
-    errors.push({
-      field: fieldName,
-      message: `${fieldName} must be of type ${rules.type}`,
-      code: 'INVALID_TYPE'
+  // Sanitize email
+  static sanitizeEmail(email) {
+    if (!email || typeof email !== 'string') {
+      throw new Error('Email is required and must be a string');
+    }
+
+    const sanitized = validator.normalizeEmail(email.trim().toLowerCase(), {
+      gmail_remove_dots: false,
+      gmail_remove_subaddress: false
     });
-    return errors;
-  }
-  
-  // String validations
-  if (rules.type === 'string' && typeof value === 'string') {
-    // Length validations
-    if (rules.minLength && value.length < rules.minLength) {
-      errors.push({
-        field: fieldName,
-        message: `${fieldName} must be at least ${rules.minLength} characters`,
-        code: 'MIN_LENGTH'
-      });
-    }
-    
-    if (rules.maxLength && value.length > rules.maxLength) {
-      errors.push({
-        field: fieldName,
-        message: `${fieldName} must not exceed ${rules.maxLength} characters`,
-        code: 'MAX_LENGTH'
-      });
-    }
-    
-    // Pattern validation
-    if (rules.pattern && PATTERNS[rules.pattern] && !PATTERNS[rules.pattern].test(value)) {
-      errors.push({
-        field: fieldName,
-        message: getPatternErrorMessage(fieldName, rules.pattern),
-        code: 'INVALID_PATTERN'
-      });
-    }
-  }
-  
-  // Enum validation
-  if (rules.enum && !rules.enum.includes(value)) {
-    errors.push({
-      field: fieldName,
-      message: `${fieldName} must be one of: ${rules.enum.join(', ')}`,
-      code: 'INVALID_ENUM'
-    });
-  }
-  
-  // Number validations
-  if (rules.type === 'number' && typeof value === 'number') {
-    if (rules.min !== undefined && value < rules.min) {
-      errors.push({
-        field: fieldName,
-        message: `${fieldName} must be at least ${rules.min}`,
-        code: 'MIN_VALUE'
-      });
-    }
-    
-    if (rules.max !== undefined && value > rules.max) {
-      errors.push({
-        field: fieldName,
-        message: `${fieldName} must not exceed ${rules.max}`,
-        code: 'MAX_VALUE'
-      });
-    }
-  }
-  
-  return errors;
-}
 
-// Sanitize values
-function sanitizeValue(value, rules) {
-  if (rules.type === 'string' && typeof value === 'string') {
-    // Trim whitespace
-    value = value.trim();
+    if (!sanitized || !validator.isEmail(sanitized)) {
+      throw new Error('Invalid email format');
+    }
+
+    return sanitized;
+  }
+
+  // Sanitize phone number
+  static sanitizePhone(phone) {
+    if (!phone || typeof phone !== 'string') {
+      throw new Error('Phone number is required and must be a string');
+    }
+
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
     
-    // Convert email to lowercase
-    if (rules.pattern === 'email') {
-      value = value.toLowerCase();
+    // Check for valid US phone number format
+    if (!/^1?[2-9]\d{2}[2-9]\d{2}\d{4}$/.test(cleaned)) {
+      throw new Error('Invalid US phone number format');
+    }
+
+    // Format as (XXX) XXX-XXXX
+    const formatted = cleaned.length === 11 && cleaned[0] === '1' 
+      ? cleaned.substring(1) 
+      : cleaned;
+    
+    return `(${formatted.substring(0, 3)}) ${formatted.substring(3, 6)}-${formatted.substring(6)}`;
+  }
+
+  // Sanitize MongoDB ObjectId
+  static sanitizeObjectId(id) {
+    if (!id) {
+      throw new Error('ID is required');
+    }
+
+    if (typeof id !== 'string') {
+      throw new Error('ID must be a string');
+    }
+
+    if (!ObjectId.isValid(id)) {
+      throw new Error('Invalid ID format');
+    }
+
+    return new ObjectId(id);
+  }
+
+  // Sanitize US state code
+  static sanitizeStateCode(state) {
+    if (!state || typeof state !== 'string') {
+      throw new Error('State is required and must be a string');
+    }
+
+    const cleaned = state.trim().toUpperCase();
+    
+    // List of valid US state codes
+    const validStates = [
+      'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+      'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+      'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+      'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+      'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+      'DC'
+    ];
+
+    if (!validStates.includes(cleaned)) {
+      throw new Error('Invalid US state code');
+    }
+
+    return cleaned;
+  }
+
+  // Sanitize general text field
+  static sanitizeText(text, options = {}) {
+    if (!text || typeof text !== 'string') {
+      if (options.required) {
+        throw new Error('Text field is required');
+      }
+      return null;
+    }
+
+    let sanitized = text.trim();
+    
+    // Remove HTML tags
+    sanitized = validator.stripLow(sanitized);
+    
+    // Escape HTML entities if requested
+    if (options.escape) {
+      sanitized = validator.escape(sanitized);
+    }
+
+    // Check length limits
+    if (options.maxLength && sanitized.length > options.maxLength) {
+      sanitized = sanitized.substring(0, options.maxLength);
     }
     
-    // Clean phone numbers
-    if (rules.pattern === 'phone' || rules.pattern === 'usPhone') {
-      value = value.replace(/\D/g, ''); // Remove non-digits
-      if (value.length === 10) {
-        value = `+1${value}`; // Add country code for US numbers
+    if (options.minLength && sanitized.length < options.minLength) {
+      throw new Error(`Text must be at least ${options.minLength} characters`);
+    }
+
+    return sanitized;
+  }
+
+  // Sanitize boolean field
+  static sanitizeBoolean(value, fieldName = 'field') {
+    if (value === null || value === undefined) {
+      throw new Error(`${fieldName} is required`);
+    }
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase().trim();
+      if (lower === 'true' || lower === 'yes' || lower === '1') {
+        return true;
+      }
+      if (lower === 'false' || lower === 'no' || lower === '0') {
+        return false;
       }
     }
+
+    throw new Error(`${fieldName} must be a boolean value`);
   }
-  
-  return value;
+
+  // Sanitize URL
+  static sanitizeUrl(url, options = {}) {
+    if (!url || typeof url !== 'string') {
+      if (options.required) {
+        throw new Error('URL is required');
+      }
+      return null;
+    }
+
+    const trimmed = url.trim();
+    
+    if (!validator.isURL(trimmed, {
+      protocols: options.protocols || ['http', 'https'],
+      require_protocol: options.requireProtocol !== false
+    })) {
+      throw new Error('Invalid URL format');
+    }
+
+    return trimmed;
+  }
+
+  // Sanitize numeric input
+  static sanitizeNumber(value, options = {}) {
+    if (value === null || value === undefined) {
+      if (options.required) {
+        throw new Error('Number is required');
+      }
+      return null;
+    }
+
+    const num = Number(value);
+    
+    if (isNaN(num)) {
+      throw new Error('Invalid number format');
+    }
+
+    if (options.min !== undefined && num < options.min) {
+      throw new Error(`Number must be at least ${options.min}`);
+    }
+
+    if (options.max !== undefined && num > options.max) {
+      throw new Error(`Number must be no more than ${options.max}`);
+    }
+
+    if (options.integer && !Number.isInteger(num)) {
+      throw new Error('Number must be an integer');
+    }
+
+    return num;
+  }
 }
 
-// Get user-friendly error messages for patterns
-function getPatternErrorMessage(fieldName, pattern) {
-  const messages = {
-    email: `${fieldName} must be a valid email address`,
-    phone: `${fieldName} must be a valid phone number`,
-    usPhone: `${fieldName} must be a valid US phone number`,
-    strongPassword: `${fieldName} must contain at least 8 characters with uppercase, lowercase, number, and special character`,
-    name: `${fieldName} must contain only letters, spaces, hyphens, and apostrophes`,
-    city: `${fieldName} must contain only letters, spaces, hyphens, and apostrophes`,
-    state: `${fieldName} must contain only letters and spaces`,
-    alphaNumeric: `${fieldName} must contain only letters and numbers`,
-    mongoObjectId: `${fieldName} must be a valid MongoDB ObjectId`,
-    jwt: `${fieldName} must be a valid JWT token`,
-    url: `${fieldName} must be a valid URL`,
-    zipCode: `${fieldName} must be a valid ZIP code`
-  };
-  
-  return messages[pattern] || `${fieldName} format is invalid`;
+// Lead-specific validation
+export class LeadValidator {
+  static validateLeadInput(data) {
+    const errors = [];
+    const sanitized = {};
+
+    try {
+      // Required fields
+      sanitized.name = InputSanitizer.sanitizeText(data.name, { 
+        required: true, 
+        minLength: 2, 
+        maxLength: 100,
+        escape: true 
+      });
+    } catch (error) {
+      errors.push(`Name: ${error.message}`);
+    }
+
+    try {
+      sanitized.email = InputSanitizer.sanitizeEmail(data.email);
+    } catch (error) {
+      errors.push(`Email: ${error.message}`);
+    }
+
+    try {
+      sanitized.phone = InputSanitizer.sanitizePhone(data.phone);
+    } catch (error) {
+      errors.push(`Phone: ${error.message}`);
+    }
+
+    try {
+      sanitized.state = InputSanitizer.sanitizeStateCode(data.state);
+    } catch (error) {
+      errors.push(`State: ${error.message}`);
+    }
+
+    try {
+      sanitized.city = InputSanitizer.sanitizeText(data.city, { 
+        required: true, 
+        minLength: 2, 
+        maxLength: 50,
+        escape: true 
+      });
+    } catch (error) {
+      errors.push(`City: ${error.message}`);
+    }
+
+    // Qualification questions
+    try {
+      sanitized.hasResidence = data.hasResidence === 'yes';
+      sanitized.hasInternet = data.hasInternet === 'yes';
+      sanitized.hasSpace = data.hasSpace === 'yes';
+    } catch (error) {
+      errors.push(`Qualification: ${error.message}`);
+    }
+
+    // Optional fields
+    if (data.referralCode) {
+      try {
+        sanitized.referralCode = InputSanitizer.sanitizeText(data.referralCode, { 
+          maxLength: 50,
+          escape: true 
+        });
+      } catch (error) {
+        errors.push(`Referral Code: ${error.message}`);
+      }
+    }
+
+    if (data.referralSource) {
+      try {
+        sanitized.referralSource = InputSanitizer.sanitizeText(data.referralSource, { 
+          maxLength: 100,
+          escape: true 
+        });
+      } catch (error) {
+        errors.push(`Referral Source: ${error.message}`);
+      }
+    }
+
+    // Analytics fields (optional)
+    ['sessionId', 'ipAddress', 'utmSource', 'utmMedium', 'utmCampaign'].forEach(field => {
+      if (data[field]) {
+        try {
+          sanitized[field] = InputSanitizer.sanitizeText(data[field], { 
+            maxLength: 255,
+            escape: true 
+          });
+        } catch (error) {
+          errors.push(`${field}: ${error.message}`);
+        }
+      }
+    });
+
+    if (errors.length > 0) {
+      throw new Error(`Validation errors: ${errors.join(', ')}`);
+    }
+
+    return sanitized;
+  }
 }
-
-// Quick validation helpers
-export const validate = {
-  email: (email) => {
-    if (!email || !PATTERNS.email.test(email)) {
-      throw new APIError('Invalid email address', 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    return email.toLowerCase().trim();
-  },
-  
-  password: (password, strong = false) => {
-    if (!password || password.length < 6) {
-      throw new APIError('Password must be at least 6 characters', 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    if (strong && !PATTERNS.strongPassword.test(password)) {
-      throw new APIError(
-        'Password must contain at least 8 characters with uppercase, lowercase, number, and special character',
-        400,
-        ErrorTypes.VALIDATION_ERROR
-      );
-    }
-    return password;
-  },
-  
-  phone: (phone) => {
-    if (phone && !PATTERNS.phone.test(phone)) {
-      throw new APIError('Invalid phone number format', 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    return phone ? phone.replace(/\D/g, '') : phone;
-  },
-  
-  name: (name) => {
-    if (!name || !PATTERNS.name.test(name)) {
-      throw new APIError('Invalid name format', 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    return name.trim();
-  },
-  
-  objectId: (id) => {
-    if (!id || !PATTERNS.mongoObjectId.test(id)) {
-      throw new APIError('Invalid ID format', 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    return id;
-  },
-  
-  required: (value, fieldName) => {
-    if (value === undefined || value === null || value === '') {
-      throw new APIError(`${fieldName} is required`, 400, ErrorTypes.VALIDATION_ERROR);
-    }
-    return value;
-  }
-};
-
-// Sanitization helpers
-export const sanitize = {
-  html: (str) => {
-    if (!str) return str;
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;');
-  },
-  
-  sql: (str) => {
-    if (!str) return str;
-    return str.replace(/'/g, "''");
-  },
-  
-  filename: (str) => {
-    if (!str) return str;
-    return str.replace(/[^a-zA-Z0-9._-]/g, '');
-  }
-};
 
 export default {
-  validateInput,
-  validate,
-  sanitize,
-  VALIDATION_SCHEMAS,
-  PATTERNS
+  InputSanitizer,
+  LeadValidator
 };

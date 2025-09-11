@@ -19,19 +19,12 @@
     <meta name="twitter:description" content="Earn $500-$1000 monthly passive income by hosting a small computer in your home." />
     
     <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%REACT_APP_GA_MEASUREMENT_ID%"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'GA_MEASUREMENT_ID', {
-        page_title: 'EdgeVantage Landing',
-        page_location: window.location.href,
-        custom_map: {
-          'custom_parameter_1': 'step',
-          'custom_parameter_2': 'source'
-        }
-      });
+      // Analytics configuration is now handled in utils/analytics.js
     </script>
     
     <!-- Facebook Pixel -->
@@ -44,8 +37,7 @@
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', 'YOUR_PIXEL_ID');
-      fbq('track', 'PageView');
+      // Facebook Pixel initialization is now handled in utils/analytics.js
     </script>
     <noscript><img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"
@@ -72,20 +64,7 @@
       })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
     </script>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            animation: {
-              'in': 'fadeIn 0.5s ease-in-out',
-              'zoom-in': 'zoomIn 0.3s ease-out',
-            }
-          }
-        }
-      }
-    </script>
+    <!-- Tailwind CSS is now handled via PostCSS -->
     
     <title>EdgeVantage - Passive Income Made Simple</title>
   </head>
@@ -93,25 +72,6 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     
-    <!-- Custom CSS for animations -->
-    <style>
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      @keyframes zoomIn {
-        from { opacity: 0; transform: scale(0.9); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      
-      .animate-in {
-        animation: fadeIn 0.5s ease-in-out;
-      }
-      
-      .zoom-in {
-        animation: zoomIn 0.3s ease-out;
-      }
-    </style>
+    <!-- Custom animations are now in src/index.css -->
   </body>
 </html>

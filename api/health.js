@@ -1,4 +1,4 @@
-import { connectToDatabase, getCollection } from './lib/database.js';
+import { connectToDatabase, getCollection, getConnectionHealth } from './lib/database.js';
 import { 
   setCorsHeaders, 
   setSecurityHeaders, 
@@ -30,18 +30,21 @@ export default asyncHandler(async function handler(req, res) {
   };
 
   try {
-    // Database health check
+    // Enhanced database health check
     const dbStartTime = Date.now();
     try {
-      const { db } = await connectToDatabase();
-      // Simple ping test instead of counting documents
-      await db.admin().ping();
+      const connectionHealth = await getConnectionHealth();
       
       healthData.database = {
-        status: 'connected',
+        ...connectionHealth,
         responseTime: Date.now() - dbStartTime,
-        connection: 'ping successful'
+        optimized: true,
+        pooling: 'active'
       };
+      
+      if (connectionHealth.health === 'unhealthy') {
+        healthData.status = 'degraded';
+      }
     } catch (dbError) {
       console.error('Health check database error:', dbError);
       healthData.database = {

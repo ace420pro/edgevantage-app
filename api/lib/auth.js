@@ -1,7 +1,15 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+// Generate secure JWT secret if not provided
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  // Generate a secure random secret for development
+  const crypto = require('crypto');
+  return crypto.randomBytes(64).toString('hex');
+})();
 const JWT_EXPIRES_IN = '7d';
 
 // Hash password
@@ -10,8 +18,13 @@ export async function hashPassword(password) {
   return bcrypt.hash(password, salt);
 }
 
-// Verify password
+// Verify password with timing attack protection
 export async function verifyPassword(password, hashedPassword) {
+  if (!password || !hashedPassword) {
+    // Perform a dummy bcrypt operation to prevent timing attacks
+    await bcrypt.compare('dummy', '$2a$10$dummy.hash.to.prevent.timing.attacks');
+    return false;
+  }
   return bcrypt.compare(password, hashedPassword);
 }
 
@@ -33,13 +46,32 @@ export function generateSetupToken(email, applicationId) {
   );
 }
 
-// Verify JWT token
+// In-memory token blacklist (in production, use Redis)
+const tokenBlacklist = new Set();
+
+// Verify JWT token with blacklist check
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    if (tokenBlacklist.has(token)) {
+      throw new Error('Token has been revoked');
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded;
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
+}
+
+// Blacklist a token (for logout functionality)
+export function revokeToken(token) {
+  tokenBlacklist.add(token);
+  // In production, should also add to Redis with TTL
+}
+
+// Clean up expired tokens from blacklist
+export function cleanupBlacklist() {
+  // In production, Redis handles TTL automatically
+  // This is a placeholder for in-memory implementation
 }
 
 // Generate password reset token
@@ -79,7 +111,9 @@ export default {
   generateToken,
   generateSetupToken,
   verifyToken,
+  revokeToken,
   generateResetToken,
   requireAuth,
-  generateRandomPassword
+  generateRandomPassword,
+  cleanupBlacklist
 };
