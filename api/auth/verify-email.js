@@ -1,0 +1,223 @@
+import { connectToDatabase, getCollection } from '../lib/database.js';
+import { 
+  setCorsHeaders, 
+  setSecurityHeaders, 
+  handleOptions, 
+  handleMethodNotAllowed,
+  rateLimit 
+} from '../lib/middleware.js';
+import { 
+  asyncHandler, 
+  APIError,
+  ErrorTypes,
+  CommonErrors
+} from '../lib/errors.js';
+
+export default asyncHandler(async function handler(req, res) {
+  // Set security headers
+  setCorsHeaders(res);
+  setSecurityHeaders(res);
+
+  // Handle preflight
+  if (handleOptions(req, res)) return;
+
+  // Check rate limiting
+  if (rateLimit(req, res)) return;
+
+  // Support both GET (clicking link) and POST (API call)
+  if (handleMethodNotAllowed(req, res, ['GET', 'POST'])) return;
+
+  // Get token from query params (GET) or body (POST)
+  const token = req.method === 'GET' ? req.query.token : req.body.token;
+  
+  console.log('🔍 Verification attempt:', { 
+    method: req.method, 
+    token: token ? `${token.substring(0, 8)}...` : null,
+    query: req.query,
+    body: req.body 
+  });
+
+  if (!token) {
+      if (req.method === 'GET') {
+        // Return HTML page for missing token
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>EdgeVantage - Email Verification</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+              .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+              .header { text-align: center; margin-bottom: 30px; }
+              .logo { font-size: 24px; font-weight: bold; color: #667eea; }
+              .error { color: #dc3545; text-align: center; }
+              .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div class="logo">EdgeVantage</div>
+                <h1>Email Verification</h1>
+              </div>
+              <div class="error">
+                <h2>❌ Invalid Verification Link</h2>
+                <p>This verification link is missing the required token. Please check your email and click the correct link.</p>
+                <a href="https://edgevantagepro.com" class="button">Return to EdgeVantage</a>
+              </div>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      return res.status(400).json({ 
+        error: 'Verification token is required',
+        code: 'NO_TOKEN'
+      });
+    }
+
+    // Get users collection using shared utility
+    const usersCollection = await getCollection('users');
+
+    // Find user by verification token and check expiration
+    // Note: Token is stored directly (not hashed) in resend-verification.js
+    const user = await usersCollection.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: new Date() }
+    });
+    
+    console.log('👤 User lookup result:', { 
+      found: !!user, 
+      email: user?.email,
+      tokenInDb: user?.emailVerificationToken ? `${user.emailVerificationToken.substring(0, 8)}...` : null,
+      expires: user?.emailVerificationExpires,
+      verified: user?.emailVerified 
+    });
+    
+    if (!user) {
+      if (req.method === 'GET') {
+        // Return HTML page for invalid/expired token
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>EdgeVantage - Email Verification</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+              .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+              .header { text-align: center; margin-bottom: 30px; }
+              .logo { font-size: 24px; font-weight: bold; color: #667eea; }
+              .error { color: #dc3545; text-align: center; }
+              .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div class="logo">EdgeVantage</div>
+                <h1>Email Verification</h1>
+              </div>
+              <div class="error">
+                <h2>❌ Link Expired or Invalid</h2>
+                <p>This verification link has expired or is no longer valid. Please request a new verification email.</p>
+                <a href="https://edgevantagepro.com" class="button">Go to EdgeVantage</a>
+              </div>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      return res.status(400).json({ 
+        error: 'Invalid or expired verification token',
+        code: 'INVALID_TOKEN'
+      });
+    }
+
+    // Mark email as verified and remove verification tokens
+    await usersCollection.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          emailVerified: true,
+          emailVerifiedAt: new Date()
+        },
+        $unset: {
+          emailVerificationToken: 1,
+          emailVerificationExpires: 1
+        }
+      }
+    );
+
+    console.log(`✅ Email verified successfully for: ${user.email}`);
+
+    if (req.method === 'GET') {
+      // Return success HTML page
+      return res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>EdgeVantage - Email Verified!</title>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #667eea; }
+            .success { color: #28a745; text-align: center; }
+            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .info { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .checkmark { font-size: 48px; color: #28a745; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="logo">EdgeVantage</div>
+              <h1>Email Verification</h1>
+            </div>
+            <div class="success">
+              <div class="checkmark">✅</div>
+              <h2>Email Successfully Verified!</h2>
+              <p>Thank you, <strong>${user.name}</strong>! Your email address has been verified and your account is now fully activated.</p>
+            </div>
+            
+            <div class="info">
+              <h3>🎉 What's Next?</h3>
+              <ul style="text-align: left;">
+                <li>🏠 You can now access your full EdgeVantage dashboard</li>
+                <li>📧 You'll receive important updates about your passive income opportunity</li>
+                <li>💰 Track your application status and earnings</li>
+                <li>🔒 Your account is now fully secured</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="https://edgevantagepro.com/account" class="button">Access Your Dashboard</a>
+            </div>
+            
+            <p style="text-align: center; margin-top: 20px; color: #666;">
+              You can safely close this window and return to EdgeVantage.
+            </p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // JSON response for API calls
+    return res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+      user: {
+        email: user.email,
+        name: user.name,
+        emailVerified: true
+      }
+    });
+
+});
