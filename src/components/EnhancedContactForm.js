@@ -414,7 +414,7 @@ const EnhancedContactForm = ({
           }
         >
           {qualificationData.level === 'full' 
-            ? 'Complete your application below to get started earning $500-$1000/month.'
+            ? 'Complete your application below to get started earning $250-$500/month.'
             : 'We\'ll review your application for priority consideration and available opportunities.'
           }
         </Alert>

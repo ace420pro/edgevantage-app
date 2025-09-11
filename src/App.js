@@ -53,7 +53,7 @@ function MainApp() {
   
   // Referral tracking
   const [referralCode, setReferralCode] = useState('');
-  const [estimatedEarnings] = useState(() => Math.floor(Math.random() * 301) + 500); // $500-$800
+  const [estimatedEarnings] = useState(() => Math.floor(Math.random() * 251) + 250); // $250-$500
 
   // Custom hooks
   const { trackEvent, trackPageView, trackFormProgress, trackConversion } = useAnalytics();

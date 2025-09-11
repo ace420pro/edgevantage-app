@@ -24,7 +24,7 @@ const Confirmation = memo(({
   const handleShare = (platform) => {
     trackEvent('referral_share_attempt', { platform, referral_code: referralCode });
     
-    const shareText = `I just applied to earn $500-$1000/month in passive income! Check it out: ${shareUrl}`;
+    const shareText = `I just applied to earn $250-$500/month in passive income! Check it out: ${shareUrl}`;
     
     if (platform === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');

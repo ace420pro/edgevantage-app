@@ -34,15 +34,18 @@
   
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
       sans-serif;
-    font-feature-settings: 'kern', 'liga', 'onum', 'pnum';
+    font-feature-settings: 'kern', 'liga', 'calt', 'ss01', 'tnum';
+    font-variant-numeric: tabular-nums;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
     line-height: 1.6; /* WCAG 2.1 AA recommended minimum */
     font-size: 1rem; /* 16px base size */
+    font-weight: 400; /* Regular weight for body text */
     color: #111827; /* High contrast text */
     background-color: #ffffff; /* High contrast background */
   }
@@ -141,13 +144,52 @@
     top: 6px;
   }
 
-  /* Improved heading hierarchy */
-  h1 { font-size: 2.25rem; font-weight: 800; line-height: 1.2; margin-bottom: 1rem; }
-  h2 { font-size: 1.875rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.875rem; }
-  h3 { font-size: 1.5rem; font-weight: 600; line-height: 1.4; margin-bottom: 0.75rem; }
-  h4 { font-size: 1.25rem; font-weight: 600; line-height: 1.5; margin-bottom: 0.625rem; }
-  h5 { font-size: 1.125rem; font-weight: 500; line-height: 1.5; margin-bottom: 0.5rem; }
-  h6 { font-size: 1rem; font-weight: 500; line-height: 1.5; margin-bottom: 0.5rem; }
+  /* Improved heading hierarchy with professional typography */
+  h1 { 
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 2.25rem; 
+    font-weight: 800; 
+    line-height: 1.2; 
+    margin-bottom: 1rem;
+    letter-spacing: -0.025em;
+  }
+  h2 { 
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.875rem; 
+    font-weight: 700; 
+    line-height: 1.3; 
+    margin-bottom: 0.875rem;
+    letter-spacing: -0.025em;
+  }
+  h3 { 
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.5rem; 
+    font-weight: 600; 
+    line-height: 1.4; 
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.015em;
+  }
+  h4 { 
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.25rem; 
+    font-weight: 600; 
+    line-height: 1.5; 
+    margin-bottom: 0.625rem;
+  }
+  h5 { 
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.125rem; 
+    font-weight: 500; 
+    line-height: 1.5; 
+    margin-bottom: 0.5rem;
+  }
+  h6 { 
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1rem; 
+    font-weight: 500; 
+    line-height: 1.5; 
+    margin-bottom: 0.5rem;
+  }
 
   /* Ensure sufficient line height for readability */
   p, li, td, th {
@@ -477,15 +519,53 @@
     }
   }
 
+  /* Typography utility classes for consistency */
+  .text-display {
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .text-display-lg {
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Professional number styling utility */
+  .text-numbers,
+  .font-numbers {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .text-body-sm {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .text-body-lg {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.125rem;
+    line-height: 1.7;
+  }
+
   /* Text readability utilities */
   .text-readable {
     line-height: 1.6;
     font-size: 1rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .text-readable-lg {
     line-height: 1.7;
     font-size: 1.125rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   /* Spacing utilities for accessibility */
