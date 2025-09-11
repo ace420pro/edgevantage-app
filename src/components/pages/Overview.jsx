@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, Star, TrendingUp } from 'lucide-react';
+import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, Star, TrendingUp, Phone, Mail, AlertTriangle } from 'lucide-react';
 
 const Overview = memo(({ 
   onContinue, 
@@ -85,7 +85,7 @@ const Overview = memo(({
             <div className="flex flex-wrap items-center justify-center gap-4 mb-12 animate-fade-in animation-delay-400">
               <div className="flex items-center gap-2 text-white/80">
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
-                <span>No upfront costs</span>
+                <span>Zero investment required</span>
               </div>
               <div className="flex items-center gap-2 text-white/80">
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
@@ -208,22 +208,22 @@ const Overview = memo(({
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center text-white">
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-16">
-              Trusted by Thousands
+              Join Our Growing Community
             </h2>
             
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">2,847</div>
-                <p className="text-xl font-body text-white/90">Active Members</p>
+                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">500+</div>
+                <p className="text-xl font-body text-white/90">Members Nationwide</p>
               </div>
               
               <div className="text-center">
-                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">$2.3M+</div>
-                <p className="text-xl font-body text-white/90">Paid to Members</p>
+                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">$1M+</div>
+                <p className="text-xl font-body text-white/90">Total Paid Out</p>
               </div>
               
               <div className="text-center">
-                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">98%</div>
+                <div className="text-5xl md:text-6xl font-display font-bold text-emerald-400 mb-4">95%</div>
                 <p className="text-xl font-body text-white/90">Satisfaction Rate</p>
               </div>
             </div>
@@ -239,7 +239,7 @@ const Overview = memo(({
               Ready to Start Earning?
             </h2>
             <p className="text-xl font-body text-gray-600 mb-12">
-              Join thousands of homeowners earning $250-$500 monthly in passive income.
+              Join hundreds of homeowners earning $250-$500 monthly in passive income.
             </p>
             
             <button
@@ -264,9 +264,96 @@ const Overview = memo(({
                 <span>Instant response</span>
               </div>
             </div>
+
+            {/* Investment Disclaimer */}
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mt-12 max-w-2xl mx-auto">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-yellow-900 font-semibold text-lg mb-2">
+                    ⚠️ Important: EdgeVantage will NEVER ask you for money.
+                  </p>
+                  <p className="text-yellow-800">
+                    We pay YOU. Any request for payment is a scam. Zero investment required.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Footer with Contact Information */}
+      <footer className="bg-gray-900 text-white py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-4 gap-8">
+              {/* Company Info */}
+              <div className="md:col-span-2">
+                <h3 className="text-2xl font-bold mb-4">EdgeVantage</h3>
+                <p className="text-gray-300 mb-6">
+                  Connecting homeowners with passive income opportunities through equipment hosting partnerships.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <Phone className="w-5 h-5 text-emerald-400" />
+                    <a href="tel:(817)204-6783" className="text-gray-300 hover:text-white transition-colors">
+                      (817) 204-6783
+                    </a>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-emerald-400" />
+                    <a href="mailto:support@edgevantagepro.com" className="text-gray-300 hover:text-white transition-colors">
+                      support@edgevantagepro.com
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div>
+                <h4 className="text-lg font-semibold mb-4">Support</h4>
+                <ul className="space-y-2">
+                  <li>
+                    <a href="tel:(817)204-6783" className="text-gray-300 hover:text-white transition-colors">
+                      Contact Support
+                    </a>
+                  </li>
+                  <li>
+                    <a href="mailto:support@edgevantagepro.com" className="text-gray-300 hover:text-white transition-colors">
+                      Email Us
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Business Hours */}
+              <div>
+                <h4 className="text-lg font-semibold mb-4">Hours</h4>
+                <ul className="space-y-2 text-gray-300">
+                  <li>Mon-Fri: 9AM-6PM CST</li>
+                  <li>Saturday: 10AM-4PM CST</li>
+                  <li>Sunday: Closed</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="border-t border-gray-800 mt-12 pt-8">
+              <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <p className="text-gray-400 text-sm">
+                  © 2025 EdgeVantage. All rights reserved. Based in Dallas, TX.
+                </p>
+                <div className="flex items-center space-x-4 text-sm text-gray-400">
+                  <span>✓ No Investment Required</span>
+                  <span>✓ We Pay You</span>
+                  <span>✓ Free Application</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
 
     </>
   );

@@ -13,7 +13,10 @@ const ABTestManager = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [activeTab, setActiveTab] = useState('tests');
 
-  const API_URL = '';
+  // API base URL - use production API URL for deployment
+  const API_URL = process.env.NODE_ENV === 'production' 
+    ? 'https://edgevantagepro.com/api' 
+    : '';
 
   useEffect(() => {
     fetchTests();

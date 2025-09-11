@@ -54,8 +54,10 @@ const AdminDashboard = () => {
   const notesRef = useRef();
   const statusRef = useRef();
 
-  // API base URL - force relative path since backend and frontend are on same domain
-  const API_URL = '';
+  // API base URL - use production API URL for deployment
+  const API_URL = process.env.NODE_ENV === 'production' 
+    ? 'https://edgevantagepro.com/api' 
+    : '';
 
   useEffect(() => {
     fetchDashboardData();
@@ -77,8 +79,8 @@ const AdminDashboard = () => {
     setIsLoading(true);
     try {
       const [leadsResponse, statsResponse] = await Promise.all([
-        fetch(`${API_URL}/api/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
-        fetch(`${API_URL}/api/leads-stats`)
+        fetch(`${API_URL}/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
+        fetch(`${API_URL}/leads-stats`)
       ]);
       
       console.log('Leads response status:', leadsResponse.status);
@@ -121,8 +123,8 @@ const AdminDashboard = () => {
   const fetchAffiliateData = async () => {
     try {
       const [affiliatesResponse, affiliateStatsResponse] = await Promise.all([
-        fetch(`${API_URL}/api/affiliates`),
-        fetch(`${API_URL}/api/affiliates-stats`)
+        fetch(`${API_URL}/affiliates`),
+        fetch(`${API_URL}/affiliates-stats`)
       ]);
 
       if (affiliatesResponse.ok) {
@@ -142,9 +144,9 @@ const AdminDashboard = () => {
   const updateLeadStatus = async (leadId, updates) => {
     try {
       console.log('Updating lead:', leadId, 'with updates:', updates);
-      console.log('API URL:', `${API_URL}/api/leads?id=${leadId}`);
+      console.log('API URL:', `${API_URL}/leads?id=${leadId}`);
       
-      const response = await fetch(`${API_URL}/api/leads?id=${leadId}`, {
+      const response = await fetch(`${API_URL}/leads?id=${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -185,7 +187,7 @@ const AdminDashboard = () => {
 
   const updateAffiliateStatus = async (affiliateId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/api/affiliates?id=${affiliateId}`, {
+      const response = await fetch(`${API_URL}/affiliates?id=${affiliateId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -204,7 +206,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/leads?id=${leadId}`, {
+      const response = await fetch(`${API_URL}/leads?id=${leadId}`, {
         method: 'DELETE'
       });
 
@@ -220,7 +222,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this affiliate?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/affiliates?id=${affiliateId}`, {
+      const response = await fetch(`${API_URL}/affiliates?id=${affiliateId}`, {
         method: 'DELETE'
       });
 

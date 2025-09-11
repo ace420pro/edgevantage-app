@@ -260,6 +260,29 @@ const Confirmation = memo(({
             </button>
           </div>
 
+          {/* Contact Information */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Questions? Contact Us</h3>
+            <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div className="text-center">
+                <Phone className="w-8 h-8 text-emerald-600 mx-auto mb-3" />
+                <p className="font-semibold text-gray-900 mb-1">Call Us</p>
+                <a href="tel:(817)204-6783" className="text-emerald-600 hover:text-emerald-700 text-lg">
+                  (817) 204-6783
+                </a>
+                <p className="text-gray-500 text-sm mt-1">Mon-Fri 9AM-6PM CST</p>
+              </div>
+              <div className="text-center">
+                <Mail className="w-8 h-8 text-emerald-600 mx-auto mb-3" />
+                <p className="font-semibold text-gray-900 mb-1">Email Us</p>
+                <a href="mailto:support@edgevantagepro.com" className="text-emerald-600 hover:text-emerald-700">
+                  support@edgevantagepro.com
+                </a>
+                <p className="text-gray-500 text-sm mt-1">24/7 Support</p>
+              </div>
+            </div>
+          </div>
+
           {/* Footer Message */}
           <div className="text-center mt-12">
             <p className="text-gray-500 text-lg">

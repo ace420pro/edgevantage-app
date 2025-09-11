@@ -41,13 +41,14 @@ const strictLimiter = rateLimit({
 
 app.use(limiter);
 
-// Enhanced CORS configuration
+// Enhanced CORS configuration for production
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://www.edgevantagepro.com',
   'https://edgevantagepro.com',
   'https://edgevantage-app.vercel.app',
+  'https://edgevantage-app-*.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 

@@ -29,8 +29,10 @@ const LoadingSpinner = React.memo(() => (
 LoadingSpinner.displayName = 'LoadingSpinner';
 
 function MainApp() {
-  // API URL - force relative path since backend and frontend are on same domain
-  const API_URL = '';
+  // API URL - use production API URL for deployment
+  const API_URL = process.env.NODE_ENV === 'production' 
+    ? 'https://edgevantagepro.com/api' 
+    : '';
   
   // Company Contact Information
   const COMPANY_PHONE_FORMATTED = '(817) 204-6783';
