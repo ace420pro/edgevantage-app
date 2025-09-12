@@ -58,6 +58,15 @@ const AdminDashboard = () => {
   const API_URL = process.env.NODE_ENV === 'production' 
     ? 'https://edgevantagepro.com/api' 
     : '';
+  
+  // Helper function to get authenticated headers
+  const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('adminToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -79,8 +88,12 @@ const AdminDashboard = () => {
     setIsLoading(true);
     try {
       const [leadsResponse, statsResponse] = await Promise.all([
-        fetch(`${API_URL}/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`),
-        fetch(`${API_URL}/leads-stats`)
+        fetch(`${API_URL}/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`, {
+          headers: getAuthHeaders()
+        }),
+        fetch(`${API_URL}/leads-stats`, {
+          headers: getAuthHeaders()
+        })
       ]);
       
       console.log('Leads response status:', leadsResponse.status);
@@ -123,8 +136,8 @@ const AdminDashboard = () => {
   const fetchAffiliateData = async () => {
     try {
       const [affiliatesResponse, affiliateStatsResponse] = await Promise.all([
-        fetch(`${API_URL}/affiliates`),
-        fetch(`${API_URL}/affiliates-stats`)
+        fetch(`${API_URL}/affiliates`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/affiliates-stats`, { headers: getAuthHeaders() })
       ]);
 
       if (affiliatesResponse.ok) {
@@ -148,7 +161,7 @@ const AdminDashboard = () => {
       
       const response = await fetch(`${API_URL}/leads?id=${leadId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       });
 
@@ -189,7 +202,7 @@ const AdminDashboard = () => {
     try {
       const response = await fetch(`${API_URL}/affiliates?id=${affiliateId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       });
 

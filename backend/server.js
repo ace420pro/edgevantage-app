@@ -12,6 +12,7 @@ dotenv.config();
 
 // Import models
 const { User, Lead, Course, Enrollment, Payment, Affiliate, ABTest } = require('./models');
+const Admin = require('./models/Admin');
 
 // Import messaging services
 const { sendWelcomeSMS, sendWelcomeEmail, sendAdminNotification } = require('./services/messaging');
@@ -92,9 +93,16 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/edgevanta
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000
 })
-.then(() => {
+.then(async () => {
   console.log('✅ MongoDB connected successfully');
   console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
+  
+  // Create default admin account if none exists
+  try {
+    await Admin.createDefaultAdmin();
+  } catch (error) {
+    console.error('⚠️ Warning: Could not create default admin:', error.message);
+  }
 })
 .catch((err) => {
   console.error('❌ MongoDB connection error:', err.message);
@@ -160,6 +168,54 @@ const requireAdmin = (req, res, next) => {
     });
   }
   next();
+};
+
+// Admin authentication middleware (for new Admin model)
+const authenticateAdmin = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ 
+      error: 'Admin authentication required',
+      code: 'NO_ADMIN_TOKEN'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'admin-secret-key');
+    const admin = await Admin.findById(decoded.id).select('-password');
+    
+    if (!admin) {
+      return res.status(401).json({ 
+        error: 'Invalid admin token - admin not found',
+        code: 'INVALID_ADMIN_TOKEN'
+      });
+    }
+
+    if (!admin.isActive) {
+      return res.status(403).json({ 
+        error: 'Admin account is not active',
+        code: 'INACTIVE_ADMIN_ACCOUNT'
+      });
+    }
+
+    if (admin.isLocked) {
+      return res.status(423).json({ 
+        error: 'Admin account is temporarily locked',
+        code: 'ADMIN_ACCOUNT_LOCKED'
+      });
+    }
+
+    req.admin = admin;
+    next();
+  } catch (error) {
+    console.error('Admin token verification error:', error.message);
+    return res.status(403).json({ 
+      error: 'Invalid or expired admin token',
+      code: 'ADMIN_TOKEN_INVALID'
+    });
+  }
 };
 
 // =============================================================================
@@ -533,6 +589,132 @@ app.post('/api/auth/reset-password', async (req, res) => {
     res.status(500).json({ 
       error: 'Password reset failed',
       code: 'RESET_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// ADMIN AUTHENTICATION ROUTES
+// =============================================================================
+
+// POST /api/admin/auth - Admin login
+app.post('/api/admin/auth', strictLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validation
+    if (!username || !password) {
+      return res.status(400).json({ 
+        error: 'Username and password are required',
+        code: 'MISSING_CREDENTIALS'
+      });
+    }
+
+    // Find admin by username or email
+    const admin = await Admin.findOne({
+      $or: [
+        { username: username.toLowerCase() },
+        { email: username.toLowerCase() }
+      ]
+    });
+
+    if (!admin) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    // Check if account is locked
+    if (admin.isLocked) {
+      return res.status(423).json({ 
+        error: 'Account is temporarily locked due to too many failed login attempts',
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
+    // Verify password
+    const isValidPassword = await admin.comparePassword(password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: admin._id,
+        username: admin.username,
+        role: admin.role 
+      },
+      process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'admin-secret-key',
+      { expiresIn: '8h' } // 8 hour session
+    );
+
+    // Log successful login for security monitoring
+    console.log(`🔐 Admin login successful: ${admin.username} (${req.ip})`);
+
+    res.json({
+      token,
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+        lastLogin: admin.lastLogin
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin authentication error:', error);
+    
+    // Don't expose detailed error information
+    res.status(500).json({ 
+      error: 'Authentication service temporarily unavailable',
+      code: 'AUTH_SERVICE_ERROR'
+    });
+  }
+});
+
+// GET /api/admin/verify - Verify admin token
+app.get('/api/admin/verify', authenticateAdmin, async (req, res) => {
+  try {
+    res.json({
+      valid: true,
+      admin: {
+        id: req.admin._id,
+        username: req.admin.username,
+        email: req.admin.email,
+        role: req.admin.role,
+        permissions: req.admin.permissions,
+        lastLogin: req.admin.lastLogin
+      }
+    });
+  } catch (error) {
+    console.error('Admin token verification error:', error);
+    res.status(500).json({ 
+      error: 'Token verification failed',
+      code: 'TOKEN_VERIFY_ERROR'
+    });
+  }
+});
+
+// POST /api/admin/logout - Admin logout (optional, for logging)
+app.post('/api/admin/logout', authenticateAdmin, async (req, res) => {
+  try {
+    // Log logout for security monitoring
+    console.log(`🔐 Admin logout: ${req.admin.username} (${req.ip})`);
+    
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Admin logout error:', error);
+    res.status(500).json({ 
+      error: 'Logout failed',
+      code: 'LOGOUT_ERROR'
     });
   }
 });
@@ -953,8 +1135,8 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
-// GET /api/leads - Get leads with filtering
-app.get('/api/leads', async (req, res) => {
+// GET /api/leads - Get leads with filtering (ADMIN ONLY)
+app.get('/api/leads', authenticateAdmin, async (req, res) => {
   try {
     const { 
       limit = 20, 
@@ -1003,8 +1185,8 @@ app.get('/api/leads', async (req, res) => {
   }
 });
 
-// GET /api/leads-stats - Get lead statistics
-app.get('/api/leads-stats', async (req, res) => {
+// GET /api/leads-stats - Get lead statistics (ADMIN ONLY)
+app.get('/api/leads-stats', authenticateAdmin, async (req, res) => {
   try {
     const stats = await Lead.getStatistics();
     
@@ -1035,7 +1217,7 @@ app.get('/api/leads-stats', async (req, res) => {
 });
 
 // PATCH /api/leads/:id - Update lead status (Admin only)
-app.patch('/api/leads/:id', async (req, res) => {
+app.patch('/api/leads/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -1071,7 +1253,7 @@ app.patch('/api/leads/:id', async (req, res) => {
 });
 
 // DELETE /api/leads/:id - Delete lead (Admin only)
-app.delete('/api/leads/:id', async (req, res) => {
+app.delete('/api/leads/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

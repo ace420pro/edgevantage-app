@@ -9,6 +9,7 @@ const Overview = lazy(() => import('./components/pages/Overview'));
 const Application = lazy(() => import('./components/pages/Application'));
 const Confirmation = lazy(() => import('./components/pages/Confirmation'));
 const AdminDashboard = lazy(() => import('./AdminDashboard'));
+const ProtectedAdminRoute = lazy(() => import('./components/ProtectedAdminRoute'));
 const UserDashboardEnhanced = lazy(() => import('./UserDashboardEnhanced'));
 const AuthModalEnhanced = lazy(() => import('./AuthModalEnhanced'));
 const ResetPassword = lazy(() => import('./ResetPassword'));
@@ -45,7 +46,6 @@ function MainApp() {
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const [startTime] = useState(() => Date.now());
   const [currentUser, setCurrentUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   
   
   // Referral tracking
@@ -85,7 +85,7 @@ function MainApp() {
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/leads`, {
+      const response = await fetch(`${API_URL}/leads`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,18 +122,8 @@ function MainApp() {
   }, [API_URL, sessionId, startTime, trackConversion, trackEvent, estimatedEarnings]);
 
 
-  // Keyboard shortcut for admin dashboard
-  useEffect(() => {
-    const handleKeyboard = (e) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        setShowAuthModal(true);
-        trackEvent('admin_access_attempt', { method: 'keyboard_shortcut' });
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [trackEvent]);
+  // REMOVED: Keyboard shortcut backdoor for security
+  // Admin access is now properly secured via /admin route with authentication
 
   // Memoized step navigation handlers
   const handleContinue = useCallback(() => {
@@ -195,7 +185,9 @@ function MainApp() {
           {/* Admin and User Dashboard Routes */}
           <Route path="/admin" element={
             <Suspense fallback={<LoadingSpinner />}>
-              <AdminDashboard />
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
             </Suspense>
           } />
           
@@ -231,14 +223,7 @@ function MainApp() {
         </Routes>
 
 
-        {showAuthModal && (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AuthModalEnhanced
-              onClose={() => setShowAuthModal(false)}
-              onLogin={setCurrentUser}
-            />
-          </Suspense>
-        )}
+        {/* REMOVED: AuthModal backdoor - admin access now properly secured */}
       </div>
     </Router>
   );
