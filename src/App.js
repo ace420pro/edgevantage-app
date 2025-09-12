@@ -30,9 +30,9 @@ const LoadingSpinner = React.memo(() => (
 LoadingSpinner.displayName = 'LoadingSpinner';
 
 function MainApp() {
-  // API URL - use production API URL for deployment
+  // API URL - use relative path for Vercel deployment
   const API_URL = process.env.NODE_ENV === 'production' 
-    ? 'https://edgevantagepro.com/api' 
+    ? '' 
     : '';
   
   // Company Contact Information

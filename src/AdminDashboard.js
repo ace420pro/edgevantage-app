@@ -54,9 +54,9 @@ const AdminDashboard = () => {
   const notesRef = useRef();
   const statusRef = useRef();
 
-  // API base URL - use production API URL for deployment
+  // API base URL - use relative path for Vercel deployment
   const API_URL = process.env.NODE_ENV === 'production' 
-    ? 'https://edgevantagepro.com/api' 
+    ? '' 
     : '';
   
   // Helper function to get authenticated headers

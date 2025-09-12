@@ -13,9 +13,9 @@ const ABTestManager = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [activeTab, setActiveTab] = useState('tests');
 
-  // API base URL - use production API URL for deployment
+  // API base URL - use relative path for Vercel deployment
   const API_URL = process.env.NODE_ENV === 'production' 
-    ? 'https://edgevantagepro.com/api' 
+    ? '' 
     : '';
 
   useEffect(() => {

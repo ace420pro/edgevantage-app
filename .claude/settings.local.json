@@ -7,7 +7,8 @@
       "Bash(npm start)",
       "Bash(find:*)",
       "Bash(node:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
