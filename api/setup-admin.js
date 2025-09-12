@@ -1,8 +1,26 @@
 // api/setup-admin.js - One-time admin setup endpoint
 import bcrypt from 'bcryptjs';
-import { connectToDatabase, getCollection } from './lib/database.js';
+import { MongoClient } from 'mongodb';
 import { setCorsHeaders, setSecurityHeaders, handleOptions } from './lib/middleware.js';
 import { asyncHandler } from './lib/errors.js';
+
+// Simple database connection for this endpoint
+async function connectToMongoDB() {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is required');
+  }
+
+  const client = new MongoClient(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 30000,
+    retryWrites: true,
+    retryReads: true
+  });
+
+  await client.connect();
+  return client;
+}
 
 export default asyncHandler(async function handler(req, res) {
   // Set security headers
@@ -16,9 +34,16 @@ export default asyncHandler(async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let client = null;
+  
   try {
-    // Get admin collection
-    const adminsCollection = await getCollection('admins');
+    // Connect to MongoDB
+    console.log('Connecting to MongoDB...');
+    client = await connectToMongoDB();
+    const db = client.db('edgevantage');
+    const adminsCollection = db.collection('admins');
+    
+    console.log('Connected successfully, checking for existing admin...');
     
     // Check if any admin already exists
     const existingAdmin = await adminsCollection.findOne({});
@@ -79,7 +104,18 @@ export default asyncHandler(async function handler(req, res) {
     console.error('❌ Admin setup error:', error);
     return res.status(500).json({ 
       error: 'Failed to create admin account',
-      message: 'Please try again or contact support'
+      message: error.message || 'Please try again or contact support',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  } finally {
+    // Always close the connection
+    if (client) {
+      try {
+        await client.close();
+        console.log('Database connection closed');
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
   }
 });
