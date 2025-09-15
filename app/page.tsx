@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Overview from '@/components/pages/Overview';
 import Application from '@/components/pages/Application';
@@ -11,7 +11,7 @@ import { useFormValidation } from '@/hooks/useFormValidation';
 import { submitLead } from '@/lib/api/leads';
 import toast from 'react-hot-toast';
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<'overview' | 'application' | 'confirmation'>('overview');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,5 +170,18 @@ export default function Home() {
         />
       )}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

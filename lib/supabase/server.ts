@@ -17,7 +17,7 @@ export function createServiceRoleClient() {
   }
 
   const { createClient } = require('@supabase/supabase-js');
-  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false

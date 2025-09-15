@@ -49,7 +49,7 @@ export const GET = requireAdminAuth(async (request: NextRequest) => {
 
     let topReferralSources: Array<{ source: string; count: number }> = [];
     if (referralStats) {
-      const sourceCount = referralStats.reduce((acc: Record<string, number>, lead) => {
+      const sourceCount = referralStats.reduce((acc: Record<string, number>, lead: any) => {
         const source = lead.referral_source || 'direct';
         acc[source] = (acc[source] || 0) + 1;
         return acc;
@@ -72,7 +72,7 @@ export const GET = requireAdminAuth(async (request: NextRequest) => {
 
     let dailyStats: Array<{ date: string; count: number }> = [];
     if (dailyLeads) {
-      const dailyCount = dailyLeads.reduce((acc: Record<string, number>, lead) => {
+      const dailyCount = dailyLeads.reduce((acc: Record<string, number>, lead: any) => {
         const date = new Date(lead.created_at).toISOString().split('T')[0];
         acc[date] = (acc[date] || 0) + 1;
         return acc;
@@ -94,7 +94,7 @@ export const GET = requireAdminAuth(async (request: NextRequest) => {
     }
 
     // Format recent activity
-    const recentActivity = recentLeads?.map(lead => ({
+    const recentActivity = recentLeads?.map((lead: any) => ({
       type: 'new_lead',
       description: `${lead.full_name} from ${lead.state} submitted an application`,
       timestamp: lead.created_at,

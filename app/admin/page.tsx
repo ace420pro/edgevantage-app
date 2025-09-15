@@ -304,9 +304,9 @@ function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-1">
-                        {lead.hasResidence && <CheckCircle className="w-4 h-4 text-green-500" title="Has Residence" />}
-                        {lead.hasInternet && <CheckCircle className="w-4 h-4 text-blue-500" title="Has Internet" />}
-                        {lead.hasSpace && <CheckCircle className="w-4 h-4 text-purple-500" title="Has Space" />}
+                        {lead.hasResidence && <div title="Has Residence"><CheckCircle className="w-4 h-4 text-green-500" /></div>}
+                        {lead.hasInternet && <div title="Has Internet"><CheckCircle className="w-4 h-4 text-blue-500" /></div>}
+                        {lead.hasSpace && <div title="Has Space"><CheckCircle className="w-4 h-4 text-purple-500" /></div>}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
