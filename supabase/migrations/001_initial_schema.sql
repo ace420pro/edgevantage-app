@@ -283,12 +283,12 @@ CREATE POLICY "Admins can manage all users" ON users
         SELECT 1 FROM admins WHERE email = auth.jwt() ->> 'email'
     ));
 
--- Insert default admin user (password: Admin123!)
+-- Insert default admin user (password: EdgeVantage2024!Secure)
 INSERT INTO admins (email, name, password_hash, role, permissions)
 VALUES (
-    'admin@edgevantagepro.com',
-    'System Administrator',
-    '$2a$12$LQqC1Z9Xs8rF.wXYzqKkCuP1tHR1TBYpgHcYBwFoTqZ4NeKmq5Afa', -- bcrypt hash of 'Admin123!'
+    'support@edgevantagepro.com',
+    'EdgeVantage Support',
+    '$2a$12$cqdWZ8xaVjN4S69L7lSvhuDEVXm1RiXKg.lwEJ.z5ZWjOXoVn/L4e', -- bcrypt hash of 'EdgeVantage2024!Secure'
     'super_admin',
     ARRAY['all']
 ) ON CONFLICT (email) DO NOTHING;
