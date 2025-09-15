@@ -13,6 +13,8 @@ backend/.env
 # Production build
 build/
 dist/
+.next/
+out/
 
 # Runtime data
 pids
@@ -70,5 +72,7 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+cookies.txt
+nul
 
 .env*.local
