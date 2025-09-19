@@ -24,7 +24,7 @@ const AuthModalEnhanced = ({ isOpen, onClose, onSuccess }) => {
     confirmPassword: ''
   });
 
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   // Password strength checker
   const checkPasswordStrength = (password) => {

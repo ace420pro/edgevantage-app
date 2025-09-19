@@ -15,7 +15,7 @@ const UserDashboardEnhanced = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showVerificationBanner, setShowVerificationBanner] = useState(false);
 
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     fetchDashboardData();

@@ -22,7 +22,7 @@ const AdminAuth = ({ onAuthenticated }) => {
 
     try {
       // API call to authenticate admin
-      const response = await fetch('/api/admin/auth', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/admin/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)

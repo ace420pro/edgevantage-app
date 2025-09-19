@@ -10,7 +10,11 @@
       "Bash(grep:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run test:db:*)",
+      "Bash(timeout 15 npm start)",
+      "Bash(npm run test:api:*)"
     ],
     "deny": []
   }

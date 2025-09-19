@@ -54,10 +54,8 @@ const AdminDashboard = () => {
   const notesRef = useRef();
   const statusRef = useRef();
 
-  // API base URL - use relative path for Vercel deployment
-  const API_URL = process.env.NODE_ENV === 'production' 
-    ? '' 
-    : '';
+  // API base URL - use Next.js environment variable for consistency
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
   
   // Helper function to get authenticated headers
   const getAuthHeaders = () => {
@@ -91,7 +89,7 @@ const AdminDashboard = () => {
         fetch(`${API_URL}/leads?limit=100${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`, {
           headers: getAuthHeaders()
         }),
-        fetch(`${API_URL}/leads-stats`, {
+        fetch(`${API_URL}/leads/stats`, {
           headers: getAuthHeaders()
         })
       ]);
@@ -137,7 +135,7 @@ const AdminDashboard = () => {
     try {
       const [affiliatesResponse, affiliateStatsResponse] = await Promise.all([
         fetch(`${API_URL}/affiliates`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/affiliates-stats`, { headers: getAuthHeaders() })
+        fetch(`${API_URL}/affiliates/stats`, { headers: getAuthHeaders() })
       ]);
 
       if (affiliatesResponse.ok) {
@@ -157,9 +155,9 @@ const AdminDashboard = () => {
   const updateLeadStatus = async (leadId, updates) => {
     try {
       console.log('Updating lead:', leadId, 'with updates:', updates);
-      console.log('API URL:', `${API_URL}/leads?id=${leadId}`);
+      console.log('API URL:', `${API_URL}/leads/${leadId}`);
       
-      const response = await fetch(`${API_URL}/leads?id=${leadId}`, {
+      const response = await fetch(`${API_URL}/leads/${leadId}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify(updates)
@@ -200,7 +198,7 @@ const AdminDashboard = () => {
 
   const updateAffiliateStatus = async (affiliateId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/affiliates?id=${affiliateId}`, {
+      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify(updates)
@@ -219,8 +217,9 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/leads?id=${leadId}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_URL}/leads/${leadId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -235,8 +234,9 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this affiliate?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/affiliates?id=${affiliateId}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_URL}/affiliates/${affiliateId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {

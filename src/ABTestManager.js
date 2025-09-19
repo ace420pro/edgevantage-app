@@ -13,10 +13,8 @@ const ABTestManager = () => {
   const [selectedTest, setSelectedTest] = useState(null);
   const [activeTab, setActiveTab] = useState('tests');
 
-  // API base URL - use relative path for Vercel deployment
-  const API_URL = process.env.NODE_ENV === 'production' 
-    ? '' 
-    : '';
+  // API base URL - use Next.js environment variable for consistency
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     fetchTests();

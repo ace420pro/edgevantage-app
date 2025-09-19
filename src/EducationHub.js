@@ -25,7 +25,7 @@ const EducationHub = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('/api/courses');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/courses`);
       const data = await response.json();
       
       if (data.success && data.courses.length > 0) {

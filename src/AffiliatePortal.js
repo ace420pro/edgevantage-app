@@ -13,7 +13,7 @@ const AffiliatePortal = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [affiliateCode, setAffiliateCode] = useState('');
 
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     // Get affiliate code from URL params or localStorage

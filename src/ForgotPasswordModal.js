@@ -7,7 +7,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   const handleSubmit = async (e) => {
     e.preventDefault();

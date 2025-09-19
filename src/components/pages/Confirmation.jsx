@@ -1,5 +1,6 @@
 import React, { memo, useEffect } from 'react';
 import { CheckCircle, Share2, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
+import Footer from '../layout/Footer';
 
 const Confirmation = memo(({ 
   formData,
@@ -291,6 +292,9 @@ const Confirmation = memo(({
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer variant="minimal" />
     </div>
   );
 });

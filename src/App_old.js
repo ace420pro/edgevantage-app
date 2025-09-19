@@ -54,7 +54,7 @@ const trackConversion = (conversionType, value = 0) => {
 
 function MainApp() {
   // API URL - use relative path for same-domain API
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
   const [currentStep, setCurrentStep] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(Math.random().toString(36).substring(7));
@@ -265,7 +265,7 @@ function MainApp() {
       
       try {
         // Submit to backend API
-        const response = await fetch('/api/leads', {
+        const response = await fetch(`${API_URL}/leads`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -363,8 +363,8 @@ function MainApp() {
       try {
         // Fetch applications and stats in parallel
         const [applicationsResponse, statsResponse] = await Promise.all([
-          fetch('/api/leads?limit=20'),
-          fetch('/api/leads-stats')
+          fetch(`${API_URL}/leads?limit=20`),
+          fetch(`${API_URL}/leads/stats`)
         ]);
 
         if (applicationsResponse.ok) {

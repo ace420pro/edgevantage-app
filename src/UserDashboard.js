@@ -14,7 +14,7 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState('');
 
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     fetchDashboardData();

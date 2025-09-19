@@ -64,7 +64,7 @@ const trackPageView = (pageName) => {
 
 function AccessibleMainApp() {
   // API URL
-  const API_URL = '';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
   
   // Company Contact Information
   const COMPANY_PHONE = '(817) 204-6783';

@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, Star, TrendingUp, Phone, Mail, AlertTriangle } from 'lucide-react';
+import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, Star, TrendingUp, AlertTriangle } from 'lucide-react';
+import Footer from '../layout/Footer';
 
 const Overview = memo(({ 
   onContinue, 
@@ -284,76 +285,7 @@ const Overview = memo(({
       </div>
 
       {/* Footer with Contact Information */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-4 gap-8">
-              {/* Company Info */}
-              <div className="md:col-span-2">
-                <h3 className="text-2xl font-bold mb-4">EdgeVantage</h3>
-                <p className="text-gray-300 mb-6">
-                  Connecting homeowners with passive income opportunities through equipment hosting partnerships.
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <Phone className="w-5 h-5 text-emerald-400" />
-                    <a href="tel:(817)204-6783" className="text-gray-300 hover:text-white transition-colors">
-                      (817) 204-6783
-                    </a>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Mail className="w-5 h-5 text-emerald-400" />
-                    <a href="mailto:support@edgevantagepro.com" className="text-gray-300 hover:text-white transition-colors">
-                      support@edgevantagepro.com
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Links */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Support</h4>
-                <ul className="space-y-2">
-                  <li>
-                    <a href="tel:(817)204-6783" className="text-gray-300 hover:text-white transition-colors">
-                      Contact Support
-                    </a>
-                  </li>
-                  <li>
-                    <a href="mailto:support@edgevantagepro.com" className="text-gray-300 hover:text-white transition-colors">
-                      Email Us
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Business Hours */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Hours</h4>
-                <ul className="space-y-2 text-gray-300">
-                  <li>Mon-Fri: 9AM-6PM CST</li>
-                  <li>Saturday: 10AM-4PM CST</li>
-                  <li>Sunday: Closed</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="border-t border-gray-800 mt-12 pt-8">
-              <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-                <p className="text-gray-400 text-sm">
-                  © 2025 EdgeVantage. All rights reserved. Based in Dallas, TX.
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-400">
-                  <span>✓ No Investment Required</span>
-                  <span>✓ We Pay You</span>
-                  <span>✓ Free Application</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer variant="default" />
 
     </>
   );

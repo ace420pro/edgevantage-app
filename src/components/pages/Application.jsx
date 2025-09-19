@@ -1,7 +1,8 @@
 import React, { memo, useCallback, useMemo } from 'react';
 import { ChevronRight, Home, Wifi, Monitor, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import Footer from '../layout/Footer';
 
-const Application = memo(({ 
+const Application = memo(({
   formData,
   setFormData,
   errors,
@@ -16,6 +17,7 @@ const Application = memo(({
   validateForm,
   isFormValid
 }) => {
+  const [submitError, setSubmitError] = React.useState('');
   React.useEffect(() => {
     trackPageView('Application Page');
     trackFormProgress('application_started', 0);
@@ -42,7 +44,8 @@ const Application = memo(({
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    
+    setSubmitError(''); // Clear any previous errors
+
     if (!validateForm()) {
       trackEvent('form_validation_error', {
         page: 'application',
@@ -68,9 +71,11 @@ const Application = memo(({
       trackEvent('form_submission_success', { page: 'application' });
       trackFormProgress('application_completed', 100);
     } catch (error) {
-      trackEvent('form_submission_error', { 
+      console.error('Form submission failed:', error);
+      setSubmitError(error.message || 'Failed to submit application. Please try again.');
+      trackEvent('form_submission_error', {
         page: 'application',
-        error: error.message 
+        error: error.message
       });
       setIsSubmitting(false);
     }
@@ -376,6 +381,24 @@ const Application = memo(({
                 </div>
               )}
 
+              {/* Submission Error Message */}
+              {submitError && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-700">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-semibold">Submission Failed</span>
+                  </div>
+                  <p className="text-red-600 mt-1">{submitError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitError('')}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex items-center justify-between pt-8 border-t border-gray-200">
                 <button
@@ -410,6 +433,9 @@ const Application = memo(({
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer variant="minimal" />
     </div>
   );
 });

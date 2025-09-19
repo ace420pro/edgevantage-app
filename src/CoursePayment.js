@@ -111,7 +111,7 @@ const CoursePayment = ({ course, onClose, onSuccess }) => {
     
     try {
       // Create enrollment through backend API
-      const response = await fetch('/api/enrollments', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/enrollments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
