@@ -124,12 +124,8 @@ function HomeContent() {
       {currentStep === 'overview' && (
         <Overview
           onContinue={() => {
-            if (canProceedToApplication()) {
-              handleStepChange('application');
-              trackFormProgress('qualification_completed');
-            } else {
-              toast.error('Please answer all qualification questions to continue');
-            }
+            handleStepChange('application');
+            trackFormProgress('application_started');
           }}
           formData={formData}
           setFormData={setFormData}

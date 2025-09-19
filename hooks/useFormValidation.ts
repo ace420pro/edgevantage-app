@@ -67,21 +67,6 @@ export function useFormValidation() {
       isValid = false;
     }
 
-    // Validate qualification questions
-    if (!formData.hasResidence) {
-      newErrors.hasResidence = 'You must have a US residence to qualify';
-      isValid = false;
-    }
-
-    if (!formData.hasInternet) {
-      newErrors.hasInternet = 'Reliable internet access is required';
-      isValid = false;
-    }
-
-    if (!formData.hasSpace) {
-      newErrors.hasSpace = 'Available space for equipment is required';
-      isValid = false;
-    }
 
     setErrors(newErrors);
     return isValid;
@@ -93,16 +78,13 @@ export function useFormValidation() {
       validateEmail(formData.email) &&
       validatePhone(formData.phone) &&
       formData.city.trim().length >= 2 &&
-      formData.state.trim().length >= 2 &&
-      formData.hasResidence &&
-      formData.hasInternet &&
-      formData.hasSpace
+      formData.state.trim().length >= 2
     );
   }, [formData]);
 
   const canProceedToApplication = useCallback((): boolean => {
-    return formData.hasResidence && formData.hasInternet && formData.hasSpace;
-  }, [formData]);
+    return true; // No qualification requirements anymore
+  }, []);
 
   const updateField = useCallback((field: keyof ApplicationFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

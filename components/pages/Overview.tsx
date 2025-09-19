@@ -2,6 +2,7 @@ import React, { memo, useEffect } from 'react';
 import { ChevronRight, DollarSign, Users, Shield, CheckCircle, Home, Wifi, Monitor, Star, TrendingUp, Phone, Mail, AlertTriangle } from 'lucide-react';
 import { ApplicationFormData } from '@/types';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import Footer from '@/components/layout/Footer';
 
 interface OverviewProps {
   onContinue: () => void;
@@ -32,10 +33,6 @@ const Overview = memo(({
     onContinue();
   };
 
-  const handleQualificationAnswer = (question: 'hasResidence' | 'hasInternet' | 'hasSpace', value: boolean) => {
-    setFormData(prev => ({ ...prev, [question]: value }));
-    trackEvent('qualification_answer', { question, answer: value ? 'yes' : 'no' });
-  };
 
   const testimonials = [
     {
@@ -117,155 +114,29 @@ const Overview = memo(({
         </div>
       </div>
 
-      {/* Qualification Section */}
+      {/* Main CTA Section */}
       <div className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Quick Qualification Check
-              </h2>
-              <p className="text-lg text-gray-600">
-                Answer these 3 questions to see if you qualify
-              </p>
-            </div>
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-gray-900 mb-6">
+              Start Earning Today
+            </h2>
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Join thousands of homeowners earning $500-$1000 monthly with EdgeVantage.
+              No upfront costs, professional installation, guaranteed payments.
+            </p>
 
-            <div className="space-y-6">
-              <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-                <div className="flex items-start gap-4">
-                  <Home className="w-6 h-6 text-emerald-600 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Do you have a US residence with proof of ownership or lease?
-                    </h3>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => handleQualificationAnswer('hasResidence', true)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasResidence
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-emerald-600'
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleQualificationAnswer('hasResidence', false)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasResidence === false
-                            ? 'bg-red-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-red-600'
-                        }`}
-                      >
-                        No
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <button
+              onClick={handleContinueClick}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xl font-display font-bold py-4 px-12 rounded-xl shadow-2xl hover:shadow-emerald-500/25 transform hover:scale-105 transition-all duration-300 inline-flex items-center gap-3"
+            >
+              Apply Now - It's Free
+              <ChevronRight className="w-6 h-6" />
+            </button>
 
-              <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-                <div className="flex items-start gap-4">
-                  <Wifi className="w-6 h-6 text-emerald-600 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Do you have reliable internet access at your residence?
-                    </h3>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => handleQualificationAnswer('hasInternet', true)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasInternet
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-emerald-600'
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleQualificationAnswer('hasInternet', false)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasInternet === false
-                            ? 'bg-red-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-red-600'
-                        }`}
-                      >
-                        No
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-                <div className="flex items-start gap-4">
-                  <Monitor className="w-6 h-6 text-emerald-600 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Do you have a small area (2x2 ft) available for equipment?
-                    </h3>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => handleQualificationAnswer('hasSpace', true)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasSpace
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-emerald-600'
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleQualificationAnswer('hasSpace', false)}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          formData.hasSpace === false
-                            ? 'bg-red-600 text-white'
-                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-red-600'
-                        }`}
-                      >
-                        No
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {formData.hasResidence && formData.hasInternet && formData.hasSpace && (
-              <div className="mt-8 text-center animate-slide-up">
-                <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6">
-                  <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-                  <h3 className="text-xl font-bold text-emerald-900 mb-2">
-                    Congratulations! You Qualify!
-                  </h3>
-                  <p className="text-emerald-700 mb-4">
-                    You could be earning ${estimatedEarnings}/month. Complete your application now!
-                  </p>
-                  <button
-                    onClick={handleContinueClick}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2"
-                  >
-                    Continue to Application
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* CTA Section */}
-            <div className="text-center mt-12">
-              <button
-                onClick={handleContinueClick}
-                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xl font-display font-bold py-4 px-12 rounded-xl shadow-2xl hover:shadow-emerald-500/25 transform hover:scale-105 transition-all duration-300 animate-fade-in inline-flex items-center gap-3"
-              >
-                Get Started Now
-                <ChevronRight className="w-6 h-6" />
-              </button>
-
-              <p className="text-sm text-gray-600 mt-4 animate-fade-in">
-                Free application • Takes 2 minutes • Immediate response
-              </p>
-            </div>
+            <p className="text-sm text-gray-600 mt-4">
+              Free application • Takes 2 minutes • Immediate response
+            </p>
           </div>
         </div>
       </div>
@@ -379,6 +250,8 @@ const Overview = memo(({
           </button>
         </div>
       </div>
+
+      <Footer />
     </>
   );
 });
