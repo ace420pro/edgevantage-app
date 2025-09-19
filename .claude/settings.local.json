@@ -14,7 +14,10 @@
       "Bash(pkill:*)",
       "Bash(npm run test:db:*)",
       "Bash(timeout 15 npm start)",
-      "Bash(npm run test:api:*)"
+      "Bash(npm run test:api:*)",
+      "Bash(npm run health:*)",
+      "Bash(git commit:*)",
+      "Bash(timeout 10 npm start)"
     ],
     "deny": []
   }
