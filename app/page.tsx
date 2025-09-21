@@ -25,7 +25,7 @@ function HomeContent() {
 
   // Handle referral code from URL
   useEffect(() => {
-    const ref = searchParams.get('ref');
+    const ref = searchParams?.get('ref');
     if (ref) {
       setFormData(prev => ({ ...prev, referralCode: ref }));
       trackEvent('referral_link_used', { referral_code: ref });
@@ -71,10 +71,10 @@ function HomeContent() {
         sessionId,
         submissionTime: new Date(submissionTime).toISOString(),
         timeToComplete,
-        referralSource: searchParams.get('ref') || 'direct',
-        utmSource: searchParams.get('utm_source'),
-        utmMedium: searchParams.get('utm_medium'),
-        utmCampaign: searchParams.get('utm_campaign'),
+        referralSource: searchParams?.get('ref') || 'direct',
+        utmSource: searchParams?.get('utm_source'),
+        utmMedium: searchParams?.get('utm_medium'),
+        utmCampaign: searchParams?.get('utm_campaign'),
         userAgent: navigator.userAgent,
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         ipAddress: 'auto-detected'
