@@ -17,7 +17,8 @@
       "Bash(npm run test:api:*)",
       "Bash(npm run health:*)",
       "Bash(git commit:*)",
-      "Bash(timeout 10 npm start)"
+      "Bash(timeout 10 npm start)",
+      "Bash(vercel:*)"
     ],
     "deny": []
   }

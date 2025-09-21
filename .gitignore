@@ -76,3 +76,4 @@ cookies.txt
 nul
 
 .env*.local
+.vercel

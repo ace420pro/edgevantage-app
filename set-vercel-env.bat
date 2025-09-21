@@ -1,0 +1,9 @@
+@echo off
+echo Setting Vercel environment variables...
+
+echo https://neyocevxkpgeranjkvqp.supabase.co | vercel env add NEXT_PUBLIC_SUPABASE_URL production
+echo eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5leW9jZXZ4a3BnZXJhbmprdnFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzY1NjMyNiwiZXhwIjoyMDczMjMyMzI2fQ.BcpVkvGKGbCi5EGne4ytndp8fRJdkMpdOlMt7qrcEdI | vercel env add SUPABASE_SERVICE_ROLE_KEY production
+echo EdgeVantageProd2024SecretKey!Production! | vercel env add JWT_SECRET production
+echo eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5leW9jZXZ4a3BnZXJhbmprdnFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2NTYzMjYsImV4cCI6MjA3MzIzMjMyNn0.JBPjSY2CzGvhSBw6XMU6mNNS4FjBNscdrJIgti1XB48 | vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+
+echo Environment variables added successfully!
